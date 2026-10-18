@@ -17,4 +17,3 @@ def get_health() -> HealthResponse:
         app_version=settings.VERSION,
         aieval_version=getattr(aieval, "__version__", "0.1.1"),
     )
-

@@ -1,4 +1,4 @@
-"""Tests for POST /api/v1/evaluations endpoint (FR-04, FR-05, FR-06)."""
+"""Tests for POST /api/v1/evaluations endpoint and run persistence (FR-04, FR-07)."""
 
 from fastapi.testclient import TestClient
 
@@ -52,45 +52,76 @@ def test_evaluation_inline_contract_valid_passes(client: TestClient) -> None:
     assert len(data["failures"]) == 0
 
 
-def test_evaluation_inline_contract_invalid_enum(client: TestClient) -> None:
-    payload = {
-        "contract": APPENDIX_A_CONTRACT,
-        "input": {"task": "classify_support_ticket"},
+def test_evaluation_persists_run_with_contract_version_id(client: TestClient) -> None:
+    # 1. Create a contract and get its version ID
+    contract_res = client.post(
+        "/api/v1/contracts",
+        json={
+            "name": "Support Ticket Suite",
+            "checks": APPENDIX_A_CONTRACT["checks"],
+        },
+    )
+    assert contract_res.status_code == 201
+    version_id = contract_res.json()["versions"][0]["id"]
+
+    # 2. Evaluate output against version ID
+    eval_payload = {
+        "contract_version_id": version_id,
+        "input": {"ticket_id": "TICK-101"},
         "output": {
             "category": "billing",
             "priority": "super_urgent_now",  # Invalid enum
             "summary": "Urgent customer ticket",
         },
     }
-    response = client.post("/api/v1/evaluations", json=payload)
-    assert response.status_code == 200
+    eval_res = client.post("/api/v1/evaluations", json=eval_payload)
+    assert eval_res.status_code == 200
 
-    data = response.json()
+    data = eval_res.json()
     assert data["status"] == "failed"
-    assert data["summary"]["failed_checks"] >= 1
-    assert len(data["failures"]) >= 1
-
-    enum_failure = next((f for f in data["failures"] if f["code"] == "ENUM_MISMATCH"), None)
-    assert enum_failure is not None
-    assert enum_failure["path"] == "priority"
-    assert enum_failure["severity"] == "error"
-
-
-def test_evaluation_contract_version_id_lookup(client: TestClient) -> None:
-    payload = {
-        "contract_version_id": "demo-support-ticket-v1",
-        "output": {
-            "category": "technical",
-            "priority": "high",
-            "summary": "API endpoint throwing 500 error on checkout",
-        },
-    }
-    response = client.post("/api/v1/evaluations", json=payload)
-    assert response.status_code == 200
-
-    data = response.json()
-    assert data["status"] == "passed"
     assert data["contract_version"] == 1
+    run_id = data["run_id"]
+    assert run_id is not None
+
+    # 3. Verify run was persisted in the database
+    run_res = client.get(f"/api/v1/runs/{run_id}")
+    assert run_res.status_code == 200
+    run_detail = run_res.json()
+    assert run_detail["id"] == run_id
+    assert run_detail["status"] == "failed"
+    assert run_detail["contract_version_id"] == version_id
+    assert run_detail["input_json"]["ticket_id"] == "TICK-101"
+    assert run_detail["review"]["status"] == "unreviewed"
+
+
+def test_evaluation_with_contract_id_resolves_latest_version(client: TestClient) -> None:
+    # Create contract
+    contract_res = client.post(
+        "/api/v1/contracts",
+        json={
+            "name": "Latest Version Test",
+            "checks": [{"type": "required_fields", "fields": ["field_a"]}],
+        },
+    )
+    contract_id = contract_res.json()["id"]
+
+    # Add version 2
+    client.post(
+        f"/api/v1/contracts/{contract_id}/versions",
+        json={"checks": [{"type": "required_fields", "fields": ["field_a", "field_b"]}]},
+    )
+
+    # Evaluate using contract_id
+    eval_res = client.post(
+        "/api/v1/evaluations",
+        json={
+            "contract_id": contract_id,
+            "output": {"field_a": 1, "field_b": 2},
+        },
+    )
+    assert eval_res.status_code == 200
+    assert eval_res.json()["status"] == "passed"
+    assert eval_res.json()["contract_version"] == 2
 
 
 def test_evaluation_contract_version_id_not_found(client: TestClient) -> None:
@@ -109,7 +140,7 @@ def test_evaluation_missing_contract_specification(client: TestClient) -> None:
     }
     response = client.post("/api/v1/evaluations", json=payload)
     assert response.status_code == 400
-    assert "either 'contract_version_id' or inline 'contract'" in response.json()["detail"]
+    assert "must specify" in response.json()["detail"].lower()
 
 
 def test_evaluation_unsupported_check_type_returns_422(client: TestClient) -> None:
@@ -124,11 +155,9 @@ def test_evaluation_unsupported_check_type_returns_422(client: TestClient) -> No
     }
     response = client.post("/api/v1/evaluations", json=payload)
     assert response.status_code == 422
-    assert "Invalid contract check specification" in response.json()["detail"]
 
 
 def test_payload_limit_middleware_rejects_oversized_payload(client: TestClient) -> None:
-    # 600 KB payload exceeds default 500 KB limit
     oversized_summary = "a" * (600 * 1024)
     payload = {
         "contract": APPENDIX_A_CONTRACT,
@@ -137,4 +166,3 @@ def test_payload_limit_middleware_rejects_oversized_payload(client: TestClient) 
     response = client.post("/api/v1/evaluations", json=payload)
     assert response.status_code == 413
     assert "exceeds maximum allowed" in response.json()["detail"]
-

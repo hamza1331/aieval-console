@@ -14,6 +14,10 @@ class EvaluationRequest(BaseModel):
         default=None,
         description="ID of the stored contract version to evaluate against.",
     )
+    contract_id: str | None = Field(
+        default=None,
+        description="ID of the contract (will evaluate against its latest active version).",
+    )
     contract: ContractDefinitionSchema | None = Field(
         default=None,
         description="Inline declarative contract definition (used for prototyping / workbench).",

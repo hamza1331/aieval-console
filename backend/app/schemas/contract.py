@@ -1,5 +1,6 @@
 """Declarative contract schemas."""
 
+from datetime import datetime
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -30,3 +31,73 @@ class ContractDefinitionSchema(BaseModel):
     checks: list[dict[str, Any]] = Field(
         ..., min_length=1, description="List of declarative check specifications"
     )
+
+
+class ContractCreateRequest(BaseModel):
+    """Payload to create a contract with an initial version 1."""
+
+    name: str = Field(
+        ..., min_length=1, max_length=200, description="Name of the validation contract"
+    )
+    description: str | None = Field(default=None, description="Optional description")
+    checks: list[dict[str, Any]] = Field(
+        ..., min_length=1, description="List of declarative check specifications"
+    )
+
+
+class ContractUpdateRequest(BaseModel):
+    """Payload to update contract metadata or status (archive)."""
+
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    description: str | None = Field(default=None)
+    status: str | None = Field(default=None, description="Status: 'active' or 'archived'")
+
+
+class ContractVersionCreateRequest(BaseModel):
+    """Payload to create a new sequential immutable contract version."""
+
+    checks: list[dict[str, Any]] = Field(
+        ..., min_length=1, description="List of declarative check specifications"
+    )
+
+
+class ContractVersionResponse(BaseModel):
+    """Serialized contract version definition."""
+
+    id: str
+    contract_id: str
+    version: int
+    definition_json: dict[str, Any]
+    definition_hash: str
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class ContractSummaryResponse(BaseModel):
+    """Lightweight contract metadata for lists."""
+
+    id: str
+    name: str
+    description: str | None = None
+    status: str
+    latest_version: int
+    total_versions: int
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class ContractDetailResponse(BaseModel):
+    """Full contract details including full version history."""
+
+    id: str
+    name: str
+    description: str | None = None
+    status: str
+    created_at: datetime
+    updated_at: datetime
+    versions: list[ContractVersionResponse] = Field(default_factory=list)
+
+    model_config = {"from_attributes": True}

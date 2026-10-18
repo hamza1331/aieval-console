@@ -31,6 +31,8 @@ class Settings(BaseSettings):
     # API Documentation toggle (FR-15, NFR-15)
     ENABLE_OPENAPI: bool = True
 
+    # Database configuration (Phase 2)
+    DATABASE_URL: str = "sqlite:///./data/aieval.db"
+
 
 settings = Settings()
-
