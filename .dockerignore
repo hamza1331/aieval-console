@@ -1,0 +1,30 @@
+# Git & VCS
+.git/
+.gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+*.sqlite
+*.db
+
+# Node / Frontend
+node_modules/
+frontend/dist/
+.vite/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+
+# OS & Environment
+.env
+.DS_Store

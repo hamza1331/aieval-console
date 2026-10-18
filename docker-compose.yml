@@ -1,0 +1,28 @@
+services:
+  console:
+    build:
+      context: ..
+      dockerfile: aieval-console/Dockerfile
+    container_name: aieval-console
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - aieval-data:/app/data
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8000
+      - DATABASE_URL=sqlite:////app/data/aieval.db
+      - DATA_DIR=/app/data
+      - AUTO_MIGRATE=true
+      - SEED_DEMO_DATA=true
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+
+volumes:
+  aieval-data:
+    name: aieval-console-data

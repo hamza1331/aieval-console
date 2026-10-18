@@ -245,3 +245,4 @@ Phase 4 completes the transition of `aieval-console` from a local development en
 - [ ] GitHub Actions workflow `.github/workflows/ci.yml` is defined and valid.
 - [ ] Cross-repo verification succeeds: exported fixture from console runs cleanly in `aieval-py` CLI.
 - [ ] 100% test pass rate in backend and 0 frontend build errors.
+

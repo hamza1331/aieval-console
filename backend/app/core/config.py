@@ -33,6 +33,10 @@ class Settings(BaseSettings):
 
     # Database configuration (Phase 2)
     DATABASE_URL: str = "sqlite:///./data/aieval.db"
+    AUTO_MIGRATE: bool = False
+
+    # Production Static Assets & SPA Serving (Phase 4)
+    STATIC_DIR: str | None = None
 
 
 settings = Settings()
