@@ -87,3 +87,4 @@ class FixtureService:
                 return False, "Attribute 'expected.passed' must be a boolean.", 0
 
         return True, None, len(checks)
+

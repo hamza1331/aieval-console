@@ -65,3 +65,4 @@ class OverviewService:
             unreviewed_failures=unreviewed_failures,
             recent_runs=recent_runs,
         )
+

@@ -266,3 +266,4 @@ export const RunHistoryPage: React.FC<RunHistoryPageProps> = ({
     </div>
   );
 };
+

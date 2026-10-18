@@ -50,3 +50,4 @@ export const JsonViewer: React.FC<JsonViewerProps> = ({
     </div>
   );
 };
+

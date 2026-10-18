@@ -57,3 +57,4 @@ def validate_fixture(
         error=error_msg,
         checks_count=checks_count,
     )
+

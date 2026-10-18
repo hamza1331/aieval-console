@@ -335,3 +335,4 @@ export const ContractDetailPage: React.FC<ContractDetailPageProps> = ({
     </div>
   );
 };
+

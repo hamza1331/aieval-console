@@ -39,3 +39,4 @@ def test_overview_statistics_and_recent_runs(client: TestClient) -> None:
     assert data["unreviewed_failures"] >= 1
     assert len(data["recent_runs"]) >= 2
     assert data["recent_runs"][0]["contract_name"] == "Overview Contract 1"
+

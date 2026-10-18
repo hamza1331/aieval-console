@@ -17,3 +17,4 @@ class FixtureValidateResponse(BaseModel):
     valid: bool = Field(..., description="Whether the fixture conforms to the specification")
     error: str | None = Field(default=None, description="Validation failure explanation")
     checks_count: int = Field(default=0, description="Number of valid checks parsed")
+

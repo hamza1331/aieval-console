@@ -87,3 +87,4 @@ def test_validate_fixture_success_and_errors(client: TestClient) -> None:
     assert bad_res.status_code == 200
     assert bad_res.json()["valid"] is False
     assert "check validation error" in bad_res.json()["error"].lower()
+
