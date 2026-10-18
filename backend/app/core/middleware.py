@@ -64,3 +64,4 @@ def register_exception_handlers(app: FastAPI) -> None:
                 "detail": f"An internal server error occurred. Please reference error ID: {error_id}"
             },
         )
+

@@ -12,3 +12,4 @@ def test_health_endpoint(client: TestClient) -> None:
     assert data["app_version"] == "0.1.0"
     assert "aieval_version" in data
     assert data["aieval_version"] is not None
+

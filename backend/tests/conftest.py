@@ -13,3 +13,4 @@ def client() -> Generator[TestClient, None, None]:
     """TestClient fixture reusing the configured FastAPI application."""
     with TestClient(app) as test_client:
         yield test_client
+
