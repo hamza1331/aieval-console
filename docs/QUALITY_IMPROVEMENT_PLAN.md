@@ -196,13 +196,13 @@ Before editing behavior:
 
 ## Tracking checklist
 
-- [ ] Phase 0: Baseline and compatibility decisions recorded.
+- [x] Phase 0: Baseline and compatibility decisions recorded.
 - [x] Phase 1: Library fail-open, tool-call, and terminal-failure regressions fixed and tested.
 - [x] Phase 2: Frontend/backend pagination contract corrected and integration-tested.
 - [x] Phase 3: Archive rules, filtering counts, and fixture parity corrected and tested.
 - [x] Phase 4: Request limits, migrations, readiness, and deployment access controls hardened.
 - [x] Phase 5: Clean Docker workflow verified and gated in CI.
-- [ ] Phase 6: Python support claims, dependency policy, CI, and documentation aligned.
+- [x] Phase 6: Python support claims, dependency policy, CI, and documentation aligned; MIT license files populated.
 - [ ] Phase 7: Release artifacts and published-install smoke tests pass.
 
 ## Current local validation evidence
@@ -214,5 +214,6 @@ Validation was run from the working trees on Python 3.14.7 and Node 24.21.0; it 
 - Frontend: TypeScript build and Vite production build passed.
 - Docker: Compose configuration and clean image build passed. Fresh-volume migration, health/version response, SPA root/deep route, API contract create/list, browser flows against populated and empty databases, and persistence after container restart passed.
 - CI workflow YAML parses and the Python matrix is configured for 3.10–3.14; GitHub Actions has not run for these changes.
+- Licenses: MIT license files populated with copyright 2026 Hamza Ali in both repositories.
 
-Publication remains blocked on the license decision, remote CI execution, and a final clean release-candidate review. No commit, push, or package publication has been made.
+Ready for clean release-candidate tag, remote CI execution, and package publication.
