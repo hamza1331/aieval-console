@@ -296,14 +296,14 @@ export const WorkbenchPage: React.FC<WorkbenchPageProps> = ({
                 className="px-2 py-0.5 text-xs font-medium bg-white hover:bg-slate-100 rounded border border-slate-200 text-slate-700 transition"
                 title="Support Ticket (Valid output)"
               >
-                Ticket &check;
+                Ticket ✓
               </button>
               <button
                 onClick={() => loadDomainPreset('support', false)}
                 className="px-2 py-0.5 text-xs font-medium bg-white hover:bg-rose-50 rounded border border-slate-200 text-rose-600 transition"
                 title="Support Ticket (Invalid output)"
               >
-                Ticket &cross;
+                Ticket ✕
               </button>
               <span className="text-slate-300">|</span>
               <button
@@ -311,14 +311,14 @@ export const WorkbenchPage: React.FC<WorkbenchPageProps> = ({
                 className="px-2 py-0.5 text-xs font-medium bg-white hover:bg-slate-100 rounded border border-slate-200 text-slate-700 transition"
                 title="Recruitment Screening (Valid output)"
               >
-                Hiring &check;
+                Hiring ✓
               </button>
               <button
                 onClick={() => loadDomainPreset('recruitment', false)}
                 className="px-2 py-0.5 text-xs font-medium bg-white hover:bg-rose-50 rounded border border-slate-200 text-rose-600 transition"
                 title="Recruitment Screening (Invalid output)"
               >
-                Hiring &cross;
+                Hiring ✕
               </button>
               <span className="text-slate-300">|</span>
               <button
@@ -326,14 +326,14 @@ export const WorkbenchPage: React.FC<WorkbenchPageProps> = ({
                 className="px-2 py-0.5 text-xs font-medium bg-white hover:bg-slate-100 rounded border border-slate-200 text-slate-700 transition"
                 title="Invoice Extraction (Valid output)"
               >
-                Invoice &check;
+                Invoice ✓
               </button>
               <button
                 onClick={() => loadDomainPreset('invoice', false)}
                 className="px-2 py-0.5 text-xs font-medium bg-white hover:bg-rose-50 rounded border border-slate-200 text-rose-600 transition"
                 title="Invoice Extraction (Invalid output)"
               >
-                Invoice &cross;
+                Invoice ✕
               </button>
             </div>
           </div>

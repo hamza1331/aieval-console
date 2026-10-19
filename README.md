@@ -1,6 +1,7 @@
 # Aieval Console
 
-[![CI Status](https://github.com/aieval/aieval-console/actions/workflows/ci.yml/badge.svg)](https://github.com/aieval/aieval-console/actions)
+[![CI](https://github.com/hamza1331/aieval-console/actions/workflows/ci.yml/badge.svg)](https://github.com/hamza1331/aieval-console/actions/workflows/ci.yml)
+[![Core Engine](https://img.shields.io/badge/engine-aieval--py%20v0.2.0-blue.svg)](https://github.com/hamza1331/aieval-py)
 [![Python Version](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue.svg)](https://python.org)
 [![React Version](https://img.shields.io/badge/react-18.3-cyan.svg)](https://react.dev)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
@@ -8,6 +9,22 @@
 Aieval Console is a lightweight, self-hosted developer workspace for defining reusable validation contracts, submitting AI-generated structured outputs, inspecting deterministic failure reports, reviewing problematic examples, and exporting selected runs as reproducible regression fixtures.
 
 Built on top of the deterministic **`aieval-py`** core evaluation engine.
+
+![Dashboard Overview](docs/screenshots/overview.png)
+
+---
+
+## Visual Tour
+
+| Evaluation Workbench | Failure Diagnostics & Triage Review |
+| :---: | :---: |
+| ![Evaluation Workbench](docs/screenshots/workbench.png) | ![Run Failure Diagnostics](docs/screenshots/run_detail.png) |
+| *Real-time validation against contracts or inline prototypes* | *Field-level error codes, suggested repairs, and human triage notes* |
+
+| Declarative Contracts | Version Timeline & Specification |
+| :---: | :---: |
+| ![Declarative Contracts](docs/screenshots/contracts.png) | ![Contract Detail](docs/screenshots/contract_detail.png) |
+| *Versioned validation contracts with SHA-256 hashes* | *Immutable version history and JSON specification inspection* |
 
 ---
 
