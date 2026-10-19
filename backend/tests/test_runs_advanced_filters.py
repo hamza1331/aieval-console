@@ -70,3 +70,4 @@ def test_runs_advanced_filtering_and_export(client: TestClient, db_session: Sess
     data_json = res_json.json()
     assert isinstance(data_json, list)
     assert any(item["id"] == r1.run_id for item in data_json)
+

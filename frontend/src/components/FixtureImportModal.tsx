@@ -228,3 +228,4 @@ export const FixtureImportModal: React.FC<FixtureImportModalProps> = ({
     </Modal>
   );
 };
+

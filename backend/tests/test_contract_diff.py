@@ -60,3 +60,4 @@ def test_contract_diff_version_not_found(client: TestClient, db_session: Session
         params={"from_version": 1, "to_version": 99},
     )
     assert response.status_code == 404
+

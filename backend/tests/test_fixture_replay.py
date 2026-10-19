@@ -96,3 +96,4 @@ def test_import_fixture_as_contract(client: TestClient, db_session: Session):
     assert data["name"] == "Imported Recruitment Contract"
     assert data["latest_version"] == 1
     assert data["status"] == "active"
+

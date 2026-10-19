@@ -78,3 +78,4 @@ def test_batch_evaluation_missing_contract_returns_400(client: TestClient):
     }
     response = client.post("/api/v1/evaluations/batch", json=payload)
     assert response.status_code == 400
+
