@@ -98,3 +98,4 @@ server {
 2. **Payload Protection:** Requests exceeding `MAX_PAYLOAD_BYTES` (default 500 KB) are automatically rejected with `413 Request Entity Too Large`.
 3. **No Dynamic Execution:** Contracts cannot invoke shell commands, dynamic imports, or arbitrary Python scripts.
 4. **Log Privacy:** Application request logs record timestamps, HTTP status codes, and durations, but omit AI prompt inputs and completion outputs.
+

@@ -65,3 +65,4 @@ HEALTHCHECK --interval=10s --timeout=5s --start-period=5s --retries=3 \
   CMD curl -f http://127.0.0.1:8000/health || exit 1
 
 ENTRYPOINT ["/app/scripts/start.sh"]
+

@@ -93,3 +93,4 @@ erDiagram
 * **Adapter (`app/adapters/aieval_adapter.py`):** Translates declarative check dictionaries into executable `aieval-py` check instances using the public `build_check_from_spec` factory.
 * **Repositories (`app/repositories/`):** Database queries using SQLAlchemy 2.0 type-safe `select()` statements with pagination and filter criteria.
 * **Database Session (`app/db/session.py`):** Managed SQLite connections with `PRAGMA foreign_keys = ON` and connection pooling.
+

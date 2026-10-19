@@ -26,3 +26,4 @@ services:
 volumes:
   aieval-data:
     name: aieval-console-data
+

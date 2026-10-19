@@ -119,3 +119,4 @@ Every check specification accepts an optional `severity` parameter:
 2. When an evaluation run executes against a contract version, that version becomes **permanently immutable**.
 3. Editing or updating a contract's checks specification creates a **new sequential version** (e.g. Version 2, Version 3).
 4. Each version calculates a deterministic SHA-256 hash of its normalized definition JSON for cryptographic auditability.
+

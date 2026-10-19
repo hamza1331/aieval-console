@@ -20,3 +20,4 @@ fi
 # 3. Exec ASGI Server
 echo "[3/3] Launching Uvicorn ASGI server on ${HOST:-0.0.0.0}:${PORT:-8000}..."
 exec uvicorn app.main:app --host "${HOST:-0.0.0.0}" --port "${PORT:-8000}"
+

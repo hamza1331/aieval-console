@@ -156,3 +156,4 @@ Configuration is managed via environment variables or a local `.env` file:
 * [Contract Format Specification](docs/contract-format.md): Declarative checks reference and examples.
 * [Self-Hosting Guide](docs/self-hosting.md): Docker Compose production guide, backups, and reverse proxies.
 * [Contributing Guide](docs/contributing.md): Development workflow, testing standards, and pull requests.
+
