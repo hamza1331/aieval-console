@@ -1,5 +1,7 @@
 # Technical Spike Findings: Aieval Console Integration (Milestone 1.5)
 
+> Point-in-time integration findings. Use [QUALITY_IMPROVEMENT_PLAN.md](./QUALITY_IMPROVEMENT_PLAN.md) for current implementation and release status.
+
 **Date:** 18 October 2026  
 **Document Status:** Complete  
 **Milestone:** Phase 1 (Week 1) Decision Checkpoint  
@@ -42,4 +44,3 @@ The Phase 1 integration spike successfully verified that:
 1. **Persistence Architecture:** Proceed as planned with SQLAlchemy 2.0 and Alembic on SQLite.
 2. **Contract Versions:** Store `definition_json` as a validated snapshot alongside SHA-256 `definition_hash`. Never mutate a version once referenced by an `EvaluationRun`.
 3. **Historical Snapshots:** Store `result_json` as the exact normalized result snapshot produced at execution time, paired with `aieval_version` to protect against historical drift.
-

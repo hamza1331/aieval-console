@@ -19,7 +19,7 @@ curl http://127.0.0.1:8000/health
 
 Expected output:
 ```json
-{"status":"ok","app_version":"0.1.0","aieval_version":"0.1.1"}
+{"status":"ok","app_version":"0.1.0","aieval_version":"0.2.0"}
 ```
 
 ---
@@ -49,12 +49,19 @@ docker compose start
 ## 3. Reverse Proxy Configuration
 
 In production environments, place Aieval Console behind a TLS-terminating reverse proxy.
+The console does not provide user authentication. Do not expose it to untrusted networks
+unless the reverse proxy (or another trusted network boundary) enforces authentication
+for every path, including `/api/`, `/docs`, and `/openapi.json`.
 
 ### Caddy (Recommended)
 Add the following to your `Caddyfile`:
 
 ```caddy
 eval.yourcompany.com {
+    basic_auth {
+        {$EVAL_USERNAME} {$EVAL_PASSWORD_HASH}
+    }
+
     reverse_proxy 127.0.0.1:8000 {
         header_up X-Real-IP {remote_host}
         header_up X-Forwarded-For {remote_host}
@@ -78,6 +85,8 @@ server {
     ssl_certificate /etc/letsencrypt/live/eval.yourcompany.com/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/eval.yourcompany.com/privkey.pem;
 
+    auth_basic "Aieval Console";
+    auth_basic_user_file /etc/nginx/.htpasswd;
     client_max_body_size 1M;
 
     location / {
@@ -98,4 +107,4 @@ server {
 2. **Payload Protection:** Requests exceeding `MAX_PAYLOAD_BYTES` (default 500 KB) are automatically rejected with `413 Request Entity Too Large`.
 3. **No Dynamic Execution:** Contracts cannot invoke shell commands, dynamic imports, or arbitrary Python scripts.
 4. **Log Privacy:** Application request logs record timestamps, HTTP status codes, and durations, but omit AI prompt inputs and completion outputs.
-
+5. **Access Control:** Configure authentication at the reverse proxy before exposing the service beyond a trusted local network.

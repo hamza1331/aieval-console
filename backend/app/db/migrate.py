@@ -25,8 +25,7 @@ def run_migrations() -> None:
             break
 
     if not ini_path:
-        logger.warning("alembic.ini not found. Skipping programmatic migration.")
-        return
+        raise FileNotFoundError("Could not find alembic.ini; refusing to skip database migrations.")
 
     logger.info(f"Running database migrations using config: {ini_path}")
     alembic_cfg = Config(str(ini_path))

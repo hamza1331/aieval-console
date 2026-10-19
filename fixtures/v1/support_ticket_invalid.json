@@ -40,6 +40,11 @@
         "severity": "error"
       },
       {
+        "code": "MISSING_REQUIRED_FIELD",
+        "path": "summary",
+        "severity": "error"
+      },
+      {
         "code": "ENUM_MISMATCH",
         "path": "category",
         "severity": "error"

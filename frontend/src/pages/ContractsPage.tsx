@@ -24,6 +24,9 @@ export const ContractsPage: React.FC<ContractsPageProps> = ({
   onNavigateToWorkbench,
 }) => {
   const [contracts, setContracts] = useState<ContractSummaryResponse[]>([]);
+  const [totalContracts, setTotalContracts] = useState(0);
+  const [offset, setOffset] = useState(0);
+  const pageSize = 50;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -54,8 +57,9 @@ export const ContractsPage: React.FC<ContractsPageProps> = ({
       setLoading(true);
       setError(null);
       const params = statusFilter === 'all' ? {} : { status: statusFilter };
-      const data = await api.listContracts(params);
-      setContracts(data);
+      const data = await api.listContracts({ ...params, offset, limit: pageSize });
+      setContracts(data.items);
+      setTotalContracts(data.total);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to fetch contracts');
     } finally {
@@ -65,6 +69,10 @@ export const ContractsPage: React.FC<ContractsPageProps> = ({
 
   useEffect(() => {
     fetchContracts();
+  }, [statusFilter, offset]);
+
+  useEffect(() => {
+    setOffset(0);
   }, [statusFilter]);
 
   const handleCreateContract = async (e: React.FormEvent) => {
@@ -241,6 +249,33 @@ export const ContractsPage: React.FC<ContractsPageProps> = ({
         </div>
       )}
 
+      {!loading && totalContracts > pageSize && (
+        <div className="flex items-center justify-between text-xs text-slate-600">
+          <span>
+            Showing {offset + 1}–{Math.min(offset + contracts.length, totalContracts)} of{' '}
+            {totalContracts} contracts
+          </span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={offset === 0}
+              onClick={() => setOffset(Math.max(0, offset - pageSize))}
+              className="rounded border border-slate-300 px-3 py-1.5 disabled:opacity-50"
+            >
+              Previous
+            </button>
+            <button
+              type="button"
+              disabled={offset + pageSize >= totalContracts}
+              onClick={() => setOffset(offset + pageSize)}
+              className="rounded border border-slate-300 px-3 py-1.5 disabled:opacity-50"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Create Contract Modal */}
       <Modal
         isOpen={showCreateModal}
@@ -316,4 +351,3 @@ export const ContractsPage: React.FC<ContractsPageProps> = ({
     </div>
   );
 };
-

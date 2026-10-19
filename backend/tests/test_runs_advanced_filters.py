@@ -71,3 +71,46 @@ def test_runs_advanced_filtering_and_export(client: TestClient, db_session: Sess
     assert isinstance(data_json, list)
     assert any(item["id"] == r1.run_id for item in data_json)
 
+
+def test_failure_code_filter_applies_before_pagination_and_counts_matches(
+    client: TestClient,
+    db_session: Session,
+):
+    contract = ContractService(db_session).create_contract(
+        name="Failure Pagination",
+        description=None,
+        checks=[
+            {"type": "required_fields", "fields": ["name"]},
+            {"type": "enum", "field": "kind", "allowed": ["known"]},
+        ],
+    )
+    eval_service = EvaluationService(db_session)
+    version_id = contract.versions[0].id
+
+    enum_runs = [
+        eval_service.evaluate_and_persist(
+            contract_version_id=version_id,
+            output={"name": f"record-{idx}", "kind": "unknown"},
+        ).run_id
+        for idx in range(3)
+    ]
+    eval_service.evaluate_and_persist(
+        contract_version_id=version_id,
+        output={"kind": "known"},
+    )
+
+    response = client.get(
+        "/api/v1/runs",
+        params={
+            "contract_id": contract.id,
+            "failure_code": "enum_mismatch",
+            "limit": 1,
+            "offset": 1,
+        },
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 3
+    assert len(data["items"]) == 1
+    assert data["items"][0]["id"] in enum_runs

@@ -1,5 +1,7 @@
 # Comprehensive Implementation Plan: Aieval Console
 
+> Historical planning snapshot. Use [QUALITY_IMPROVEMENT_PLAN.md](./QUALITY_IMPROVEMENT_PLAN.md) for current implementation and release status.
+
 **Document Version:** 1.1  
 **Project:** Aieval Console  
 **Target Delivery:** 4-Week Phased Milestone Plan (Single Developer, Part-Time)  

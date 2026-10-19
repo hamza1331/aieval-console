@@ -11,6 +11,13 @@ export interface ContractDefinition {
   checks: CheckSpec[];
 }
 
+export interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
 export interface ContractCreateRequest {
   name: string;
   description?: string | null;
@@ -235,4 +242,3 @@ export interface BatchEvaluationResponse {
   total_duration_ms: number;
   results: BatchItemOutcome[];
 }
-

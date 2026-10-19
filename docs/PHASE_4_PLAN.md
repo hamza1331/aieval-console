@@ -1,5 +1,7 @@
 # Implementation Plan: Phase 4 — Self-Hosting, Operational Hardening, CI/CD & Release Packaging
 
+> Historical planning snapshot. Use [QUALITY_IMPROVEMENT_PLAN.md](./QUALITY_IMPROVEMENT_PLAN.md) for current implementation and release status.
+
 **Phase:** Phase 4 (Week 4 Milestone)  
 **Target Release:** v0.1.0  
 **Stack:** FastAPI Monolith + React 18 / Vite / Tailwind + Docker Compose + GitHub Actions CI + SQLite  
@@ -245,4 +247,3 @@ Phase 4 completes the transition of `aieval-console` from a local development en
 - [ ] GitHub Actions workflow `.github/workflows/ci.yml` is defined and valid.
 - [ ] Cross-repo verification succeeds: exported fixture from console runs cleanly in `aieval-py` CLI.
 - [ ] 100% test pass rate in backend and 0 frontend build errors.
-

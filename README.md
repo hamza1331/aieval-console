@@ -1,7 +1,7 @@
 # Aieval Console
 
 [![CI Status](https://github.com/aieval/aieval-console/actions/workflows/ci.yml/badge.svg)](https://github.com/aieval/aieval-console/actions)
-[![Python Version](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.14-blue.svg)](https://python.org)
+[![Python Version](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue.svg)](https://python.org)
 [![React Version](https://img.shields.io/badge/react-18.3-cyan.svg)](https://react.dev)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
@@ -156,4 +156,4 @@ Configuration is managed via environment variables or a local `.env` file:
 * [Contract Format Specification](docs/contract-format.md): Declarative checks reference and examples.
 * [Self-Hosting Guide](docs/self-hosting.md): Docker Compose production guide, backups, and reverse proxies.
 * [Contributing Guide](docs/contributing.md): Development workflow, testing standards, and pull requests.
-
+* [Quality Improvement & Release Readiness Plan](docs/QUALITY_IMPROVEMENT_PLAN.md): Ordered, test-first work across `aieval-py` and Aieval Console before the next public releases.

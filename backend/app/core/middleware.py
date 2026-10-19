@@ -6,30 +6,73 @@ import uuid
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from app.core.config import settings
 from app.core.logging import logger
 
 
-class PayloadLimitMiddleware(BaseHTTPMiddleware):
+class PayloadLimitMiddleware:
     """Rejects incoming requests exceeding MAX_PAYLOAD_BYTES with HTTP 413."""
 
-    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
-        content_length = request.headers.get("content-length")
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        content_length = next(
+            (value for key, value in scope["headers"] if key.lower() == b"content-length"),
+            None,
+        )
         if content_length:
             try:
                 length_int = int(content_length)
                 if length_int > settings.MAX_PAYLOAD_BYTES:
-                    return JSONResponse(
+                    response = JSONResponse(
                         status_code=413,
                         content={
                             "detail": f"Payload size {length_int} bytes exceeds maximum allowed {settings.MAX_PAYLOAD_BYTES} bytes."
                         },
                     )
+                    await response(scope, receive, send)
+                    return
             except ValueError:
                 pass
-        response: Response = await call_next(request)
-        return response
+
+        body = bytearray()
+        while True:
+            message = await receive()
+            if message["type"] == "http.disconnect":
+                return
+            if message["type"] != "http.request":
+                continue
+            chunk = message.get("body", b"")
+            if len(body) + len(chunk) > settings.MAX_PAYLOAD_BYTES:
+                response = JSONResponse(
+                    status_code=413,
+                    content={
+                        "detail": f"Payload size exceeds maximum allowed {settings.MAX_PAYLOAD_BYTES} bytes."
+                    },
+                )
+                await response(scope, receive, send)
+                return
+            body.extend(chunk)
+            if not message.get("more_body", False):
+                break
+
+        body_sent = False
+
+        async def receive_body() -> Message:
+            nonlocal body_sent
+            if body_sent:
+                return await receive()
+            body_sent = True
+            return {"type": "http.request", "body": bytes(body), "more_body": False}
+
+        await self.app(scope, receive_body, send)
 
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):

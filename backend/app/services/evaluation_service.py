@@ -53,6 +53,8 @@ class EvaluationService:
             contract_obj = self.contract_repo.get_by_id(contract_id)
             if not contract_obj:
                 raise ValueError(f"Contract '{contract_id}' not found.")
+            if contract_obj.status == "archived":
+                raise ValueError(f"Cannot evaluate archived contract '{contract_id}'.")
             version_obj = self.contract_repo.get_latest_version(contract_id)
             if not version_obj:
                 raise ValueError(f"Contract '{contract_id}' has no active versions.")
@@ -90,7 +92,7 @@ class EvaluationService:
                 output_json=output,
                 result_json=response.model_dump(),
                 duration_ms=response.duration_ms,
-                aieval_version=getattr(aieval, "__version__", "0.1.1"),
+                aieval_version=aieval.__version__,
             )
             # Create default linked review record
             self.review_repo.create_review(
@@ -213,6 +215,7 @@ class EvaluationService:
             to_date=to_date,
             min_duration_ms=min_duration_ms,
             max_duration_ms=max_duration_ms,
+            failure_code=failure_code,
             limit=limit,
             offset=offset,
         )
@@ -224,6 +227,7 @@ class EvaluationService:
             to_date=to_date,
             min_duration_ms=min_duration_ms,
             max_duration_ms=max_duration_ms,
+            failure_code=failure_code,
         )
 
         items: list[RunSummaryResponse] = []
@@ -231,18 +235,6 @@ class EvaluationService:
             version_obj = r.contract_version
             contract_obj = version_obj.contract if version_obj else None
             summary_dict = r.result_json.get("summary", {})
-            failures_list = r.result_json.get("failures", [])
-
-            # Apply failure_code filter if specified
-            if failure_code:
-                fc_upper = failure_code.upper()
-                has_code = any(
-                    isinstance(f, dict) and f.get("code", "").upper() == fc_upper
-                    for f in failures_list
-                )
-                if not has_code:
-                    continue
-
             items.append(
                 RunSummaryResponse(
                     id=r.id,

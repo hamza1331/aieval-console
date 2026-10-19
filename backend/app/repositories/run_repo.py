@@ -58,6 +58,7 @@ class RunRepository:
         to_date: datetime | None = None,
         min_duration_ms: float | None = None,
         max_duration_ms: float | None = None,
+        failure_code: str | None = None,
         limit: int = 50,
         offset: int = 0,
     ) -> list[EvaluationRun]:
@@ -82,6 +83,22 @@ class RunRepository:
             stmt = stmt.where(EvaluationRun.duration_ms >= min_duration_ms)
         if max_duration_ms is not None:
             stmt = stmt.where(EvaluationRun.duration_ms <= max_duration_ms)
+        if failure_code:
+            failures = func.json_each(
+                EvaluationRun.result_json,
+                "$.failures",
+            ).table_valued("key", "value").alias("run_failures")
+            has_failure_code = (
+                select(1)
+                .select_from(failures)
+                .where(
+                    func.upper(func.json_extract(failures.c.value, "$.code"))
+                    == failure_code.upper()
+                )
+                .correlate(EvaluationRun)
+                .exists()
+            )
+            stmt = stmt.where(has_failure_code)
 
         stmt = stmt.order_by(desc(EvaluationRun.created_at)).limit(limit).offset(offset)
         return list(self.db.execute(stmt).scalars().all())
@@ -95,6 +112,7 @@ class RunRepository:
         to_date: datetime | None = None,
         min_duration_ms: float | None = None,
         max_duration_ms: float | None = None,
+        failure_code: str | None = None,
     ) -> int:
         stmt = select(func.count(EvaluationRun.id))
         if contract_id:
@@ -113,4 +131,20 @@ class RunRepository:
             stmt = stmt.where(EvaluationRun.duration_ms >= min_duration_ms)
         if max_duration_ms is not None:
             stmt = stmt.where(EvaluationRun.duration_ms <= max_duration_ms)
+        if failure_code:
+            failures = func.json_each(
+                EvaluationRun.result_json,
+                "$.failures",
+            ).table_valued("key", "value").alias("run_failures")
+            has_failure_code = (
+                select(1)
+                .select_from(failures)
+                .where(
+                    func.upper(func.json_extract(failures.c.value, "$.code"))
+                    == failure_code.upper()
+                )
+                .correlate(EvaluationRun)
+                .exists()
+            )
+            stmt = stmt.where(has_failure_code)
         return self.db.execute(stmt).scalar() or 0

@@ -1,5 +1,7 @@
 # Phase 3 Plan: Review Workflow, Fixture Management & React Frontend Dashboard
 
+> Historical planning snapshot. Use [QUALITY_IMPROVEMENT_PLAN.md](./QUALITY_IMPROVEMENT_PLAN.md) for current implementation and release status.
+
 **Milestone:** Week 3 Delivery  
 **Project:** Aieval Console  
 **Target Architecture:** React + TypeScript + Vite + Tailwind CSS + FastAPI Endpoints (`/overview`, `/fixtures`)  
@@ -270,4 +272,3 @@ frontend/
 4. **Run History & Review:** Run history is browsable with contract and status filters; users can open any run, inspect failures, add human review notes, and toggle the reviewed status.
 5. **Fixture Interoperability:** A developer can export any failed run as a golden fixture JSON with one click, and verify it executes identically via the `aieval-py` CLI.
 6. **Clean Builds:** Backend passes all `pytest`, `ruff`, and `mypy` checks; frontend compiles cleanly with `vite build`.
-

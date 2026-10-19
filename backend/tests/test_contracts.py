@@ -161,3 +161,19 @@ def test_cannot_create_version_for_archived_contract(client: TestClient) -> None
     assert v2_res.status_code == 422
     assert "archived" in v2_res.json()["detail"].lower()
 
+
+def test_cannot_evaluate_archived_contract_by_id(client: TestClient) -> None:
+    create_res = client.post(
+        "/api/v1/contracts",
+        json={"name": "Archived Evaluation Test", "checks": SAMPLE_CHECKS},
+    )
+    contract_id = create_res.json()["id"]
+    client.patch(f"/api/v1/contracts/{contract_id}", json={"status": "archived"})
+
+    response = client.post(
+        "/api/v1/evaluations",
+        json={"contract_id": contract_id, "output": {"category": "billing", "priority": "low"}},
+    )
+
+    assert response.status_code == 422
+    assert "archived" in response.json()["detail"].lower()

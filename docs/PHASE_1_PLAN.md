@@ -1,5 +1,7 @@
 # Phase 1 Plan: Library Enhancements & FastAPI Integration Spike
 
+> Historical planning snapshot. Use [QUALITY_IMPROVEMENT_PLAN.md](./QUALITY_IMPROVEMENT_PLAN.md) for current implementation and release status.
+
 **Milestone:** Week 1 Delivery  
 **Repositories Involved:**  
 1. `aieval-py` (Core Library Enhancements)  

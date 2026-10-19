@@ -1,11 +1,15 @@
 """Fixture export, validation, import, and replay service (FR-10, FR-16)."""
 
+import re
+import uuid
 from typing import Any
 
 import aieval
 from sqlalchemy.orm import Session
 
 from app.adapters.aieval_adapter import AievalAdapter
+from app.repositories.contract_repo import ContractRepository
+from app.repositories.review_repo import ReviewRepository
 from app.repositories.run_repo import RunRepository
 from app.schemas.contract import ContractSummaryResponse
 from app.schemas.fixture import FixtureReplayResponse
@@ -16,6 +20,8 @@ class FixtureService:
     def __init__(self, db: Session) -> None:
         self.db = db
         self.run_repo = RunRepository(db)
+        self.contract_repo = ContractRepository(db)
+        self.review_repo = ReviewRepository(db)
 
     def export_fixture(self, run_id: str) -> dict[str, Any]:
         """Exports a run as a portable golden fixture adhering to FIXTURE_SPEC.md."""
@@ -68,6 +74,8 @@ class FixtureService:
 
         if "output" not in fixture:
             return False, "Fixture is missing required 'output' attribute.", 0
+        if "checks" not in fixture:
+            return False, "Fixture is missing required 'checks' attribute.", 0
 
         checks = fixture.get("checks")
         if not isinstance(checks, list) or len(checks) == 0:
@@ -79,7 +87,7 @@ class FixtureService:
                 if not isinstance(c, dict):
                     return False, f"Invalid check entry in checks array: {c}", 0
                 aieval.build_check_from_spec(c)
-        except Exception as err:
+        except (TypeError, ValueError, re.error) as err:
             return False, f"Check validation error: {err}", 0
 
         # Optional expected validation
@@ -89,6 +97,37 @@ class FixtureService:
                 return False, "Attribute 'expected' must be an object if present.", 0
             if "passed" not in expected or not isinstance(expected["passed"], bool):
                 return False, "Attribute 'expected.passed' must be a boolean.", 0
+            if "failures" in expected:
+                expected_failures = expected["failures"]
+                if not isinstance(expected_failures, list):
+                    return False, "Attribute 'expected.failures' must be an array.", 0
+                for index, failure in enumerate(expected_failures):
+                    if not isinstance(failure, dict):
+                        return (
+                            False,
+                            f"Attribute 'expected.failures[{index}]' must be an object.",
+                            0,
+                        )
+                    if not isinstance(failure.get("code"), str):
+                        return (
+                            False,
+                            f"Attribute 'expected.failures[{index}].code' must be a string.",
+                            0,
+                        )
+                    path = failure.get("path")
+                    if path is not None and not isinstance(path, str):
+                        return (
+                            False,
+                            f"Attribute 'expected.failures[{index}].path' must be a string or null.",
+                            0,
+                        )
+                    severity = failure.get("severity", "error")
+                    if severity not in ("info", "warning", "error", "critical"):
+                        return (
+                            False,
+                            f"Attribute 'expected.failures[{index}].severity' is invalid.",
+                            0,
+                        )
 
         return True, None, len(checks)
 
@@ -113,6 +152,7 @@ class FixtureService:
             output=output,
             checks_spec=checks,
             context_data=context,
+            run_id=str(uuid.uuid4()),
         )
 
         expected_block = fixture.get("expected", {})
@@ -131,43 +171,83 @@ class FixtureService:
             differences.append(
                 f"REGRESSION: Fixture expected clean pass, but actual evaluation failed with {len(eval_res.failures)} error(s)."
             )
-        elif not actual_passed and not expected_passed:
-            expected_failures = expected_block.get("failures", [])
-            expected_codes = {
-                str(f.get("code"))
-                for f in expected_failures
-                if isinstance(f, dict) and f.get("code")
-            }
-            actual_codes = {str(f.code) for f in eval_res.failures}
+        elif not actual_passed and not expected_passed and "failures" in expected_block:
+            unmatched_actual = [
+                {"code": failure.code, "path": failure.path, "severity": failure.severity}
+                for failure in eval_res.failures
+            ]
+            expected_failures = expected_block["failures"]
+            matched_expected: dict[int, int] = {}
 
-            missing_codes = expected_codes - actual_codes
-            extra_codes = actual_codes - expected_codes
+            def match_expected(expected_index: int, seen_actual: set[int]) -> bool:
+                expected_failure = expected_failures[expected_index]
+                for actual_index, actual_failure in enumerate(unmatched_actual):
+                    if actual_index in seen_actual or not all(
+                        key not in expected_failure
+                        or expected_failure[key] == actual_failure[key]
+                        for key in ("code", "path", "severity")
+                    ):
+                        continue
+                    seen_actual.add(actual_index)
+                    if actual_index not in matched_expected or match_expected(
+                        matched_expected[actual_index], seen_actual
+                    ):
+                        matched_expected[actual_index] = expected_index
+                        return True
+                return False
 
-            if missing_codes or extra_codes:
+            missing_expected = [
+                expected_failure
+                for index, expected_failure in enumerate(expected_failures)
+                if not match_expected(index, set())
+            ]
+            extra_actual = [
+                failure
+                for index, failure in enumerate(unmatched_actual)
+                if index not in matched_expected
+            ]
+
+            if missing_expected or extra_actual:
                 parity_status = "divergence"
-                if missing_codes:
-                    differences.append(f"Missing expected failure codes: {sorted(missing_codes)}")
-                if extra_codes:
-                    differences.append(f"Unexpected additional failure codes: {sorted(extra_codes)}")
+                if missing_expected:
+                    differences.append(f"Missing expected failures: {missing_expected}")
+                if extra_actual:
+                    differences.append(f"Unexpected additional failures: {extra_actual}")
 
         run_id = None
         if persist_run and contract_id:
-            from app.services.evaluation_service import EvaluationService
+            contract = self.contract_repo.get_by_id(contract_id)
+            version = self.contract_repo.get_latest_version(contract_id)
+            if contract is None or version is None:
+                raise ValueError(f"Contract '{contract_id}' not found or has no version.")
+            if contract.status == "archived":
+                raise ValueError(f"Cannot persist replay to archived contract '{contract_id}'.")
+            if version.definition_json.get("checks") != checks:
+                raise ValueError(
+                    "Cannot persist fixture replay: fixture checks do not match the selected "
+                    "contract's latest version."
+                )
 
-            service = EvaluationService(self.db)
-            persisted = service.evaluate_and_persist(
-                output=output,
-                contract_id=contract_id,
-                input_data=input_data,
+            run = self.run_repo.create_run(
+                contract_version_id=version.id,
+                status=eval_res.status,
+                input_json=input_data,
+                output_json=output,
+                result_json=eval_res.model_dump(),
+                duration_ms=eval_res.duration_ms,
+                aieval_version=aieval.__version__,
             )
-            run_id = persisted.run_id
+            run_id = run.id
+            self.review_repo.create_review(run_id=run_id)
+            self.db.commit()
+            eval_res.run_id = run_id
 
         return FixtureReplayResponse(
             run_id=run_id,
             actual_status=eval_res.status,
             expected_status=expected_status,
             parity_status=parity_status,
-            matches_expected=(actual_passed == expected_passed),
+            matches_expected=(parity_status == "match"),
             failures_count=len(eval_res.failures),
             duration_ms=eval_res.duration_ms,
             differences=differences,

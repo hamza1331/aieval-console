@@ -84,15 +84,15 @@ export const WorkbenchPage: React.FC<WorkbenchPageProps> = ({
   const refreshContracts = async (selectId?: string) => {
     try {
       const list = await api.listContracts({ status: 'active' });
-      setContracts(list);
+      setContracts(list.items);
       if (selectId) {
         setSelectedContractId(selectId);
         setMode('stored');
-      } else if (!selectedContractId && list.length > 0) {
-        setSelectedContractId(list[0].id);
+      } else if (!selectedContractId && list.items.length > 0) {
+        setSelectedContractId(list.items[0].id);
       }
-    } catch {
-      // Ignore background fetch error
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch contracts');
     }
   };
 
@@ -111,8 +111,9 @@ export const WorkbenchPage: React.FC<WorkbenchPageProps> = ({
             setSelectedVersionId(detail.versions[0].id);
           }
         }
-      }).catch(() => {
+      }).catch((err: unknown) => {
         setContractDetail(null);
+        setError(err instanceof Error ? err.message : 'Failed to fetch contract');
       });
     } else {
       setContractDetail(null);

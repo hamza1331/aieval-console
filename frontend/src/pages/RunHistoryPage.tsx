@@ -26,6 +26,9 @@ export const RunHistoryPage: React.FC<RunHistoryPageProps> = ({
   onRunSelected,
 }) => {
   const [runs, setRuns] = useState<RunSummaryResponse[]>([]);
+  const [totalRuns, setTotalRuns] = useState(0);
+  const [offset, setOffset] = useState(0);
+  const pageSize = 50;
   const [contracts, setContracts] = useState<ContractSummaryResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -48,7 +51,11 @@ export const RunHistoryPage: React.FC<RunHistoryPageProps> = ({
 
   // Fetch contracts for dropdown filter
   useEffect(() => {
-    api.listContracts().then(setContracts).catch(() => {});
+    api.listContracts()
+      .then((response) => setContracts(response.items))
+      .catch((err: unknown) => {
+        setError(err instanceof Error ? err.message : 'Failed to fetch contracts');
+      });
   }, []);
 
   const fetchRuns = async () => {
@@ -64,9 +71,12 @@ export const RunHistoryPage: React.FC<RunHistoryPageProps> = ({
       if (failureCodeFilter !== 'all') params.failure_code = failureCodeFilter;
       if (minDuration) params.min_duration_ms = Number(minDuration);
       if (maxDuration) params.max_duration_ms = Number(maxDuration);
+      params.offset = offset;
+      params.limit = pageSize;
 
       const data = await api.listRuns(params);
-      setRuns(data);
+      setRuns(data.items);
+      setTotalRuns(data.total);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to fetch runs');
     } finally {
@@ -85,9 +95,24 @@ export const RunHistoryPage: React.FC<RunHistoryPageProps> = ({
     failureCodeFilter,
     minDuration,
     maxDuration,
+    offset,
+  ]);
+
+  useEffect(() => {
+    setOffset(0);
+  }, [
+    statusFilter,
+    reviewFilter,
+    contractFilter,
+    fromDate,
+    toDate,
+    failureCodeFilter,
+    minDuration,
+    maxDuration,
   ]);
 
   const handleResetFilters = () => {
+    setOffset(0);
     setStatusFilter('all');
     setReviewFilter('all');
     setContractFilter('all');
@@ -447,6 +472,32 @@ export const RunHistoryPage: React.FC<RunHistoryPageProps> = ({
         </div>
       </div>
 
+      {!loading && totalRuns > pageSize && (
+        <div className="flex items-center justify-between text-xs text-slate-600">
+          <span>
+            Showing {offset + 1}–{Math.min(offset + runs.length, totalRuns)} of {totalRuns} runs
+          </span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={offset === 0}
+              onClick={() => setOffset(Math.max(0, offset - pageSize))}
+              className="rounded border border-slate-300 px-3 py-1.5 disabled:opacity-50"
+            >
+              Previous
+            </button>
+            <button
+              type="button"
+              disabled={offset + pageSize >= totalRuns}
+              onClick={() => setOffset(offset + pageSize)}
+              className="rounded border border-slate-300 px-3 py-1.5 disabled:opacity-50"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Fixture Import Modal */}
       <FixtureImportModal
         isOpen={showFixtureModal}
@@ -458,4 +509,3 @@ export const RunHistoryPage: React.FC<RunHistoryPageProps> = ({
     </div>
   );
 };
-

@@ -1,5 +1,7 @@
 # Phase 2 Plan: Database Persistence, Contract Versioning & Run History
 
+> Historical planning snapshot. Use [QUALITY_IMPROVEMENT_PLAN.md](./QUALITY_IMPROVEMENT_PLAN.md) for current implementation and release status.
+
 **Milestone:** Week 2 Delivery  
 **Project:** Aieval Console  
 **Target Architecture:** FastAPI + SQLAlchemy 2.x + SQLite + Alembic  
@@ -417,4 +419,3 @@ The seeder provides a repeatable demonstration setup:
 6. **Review Workflow:** `PATCH /api/v1/runs/{id}/review` updates human notes and reviewed status, surviving application and container restarts.
 7. **Demo Seeding:** `python -m app.db.seed` seeds realistic demo data reliably and idempotently.
 8. **Automated Tests:** 100% of integration and API tests pass using isolated test databases without external credentials.
-

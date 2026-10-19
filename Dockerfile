@@ -8,11 +8,11 @@ FROM node:22-alpine AS frontend-builder
 WORKDIR /build
 
 # Copy npm package definitions
-COPY frontend/package.json frontend/package-lock.json ./
+COPY aieval-console/frontend/package.json aieval-console/frontend/package-lock.json ./
 RUN npm ci
 
 # Copy frontend source and compile production bundle into /build/dist
-COPY frontend/ ./
+COPY aieval-console/frontend/ ./
 RUN npm run build
 
 # ==========================================
@@ -38,14 +38,14 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     STATIC_DIR=/app/frontend/dist
 
 # Install core library aieval-py
-COPY aieval-py* /aieval-py/
+COPY aieval-py /aieval-py/
 RUN if [ -d "/aieval-py/src" ]; then pip install --no-cache-dir /aieval-py; fi
 
 # Install backend dependencies & package
 WORKDIR /app/backend
-COPY backend/pyproject.toml backend/alembic.ini /app/backend/
-COPY backend/alembic /app/backend/alembic
-COPY backend/app /app/backend/app
+COPY aieval-console/backend/pyproject.toml aieval-console/backend/README.md aieval-console/backend/alembic.ini /app/backend/
+COPY aieval-console/backend/alembic /app/backend/alembic
+COPY aieval-console/backend/app /app/backend/app
 
 RUN pip install --no-cache-dir .
 
@@ -53,7 +53,7 @@ RUN pip install --no-cache-dir .
 COPY --from=frontend-builder /build/dist /app/frontend/dist
 
 # Copy entrypoint startup script
-COPY scripts/start.sh /app/scripts/start.sh
+COPY aieval-console/scripts/start.sh /app/scripts/start.sh
 RUN chmod +x /app/scripts/start.sh
 
 # Persistent SQLite database volume mount point
@@ -65,4 +65,3 @@ HEALTHCHECK --interval=10s --timeout=5s --start-period=5s --retries=3 \
   CMD curl -f http://127.0.0.1:8000/health || exit 1
 
 ENTRYPOINT ["/app/scripts/start.sh"]
-

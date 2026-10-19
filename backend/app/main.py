@@ -4,10 +4,11 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy.orm import Session
 
 from app.api.router import api_router
 from app.api.routes.health import get_health
@@ -19,6 +20,7 @@ from app.core.middleware import (
     register_exception_handlers,
 )
 from app.db.migrate import run_migrations
+from app.db.session import get_db
 from app.schemas.health import HealthResponse
 
 
@@ -30,10 +32,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info(f"Local-first binding: {settings.HOST}:{settings.PORT}")
 
     if settings.AUTO_MIGRATE:
-        try:
-            run_migrations()
-        except Exception as exc:
-            logger.error(f"Automatic startup migration failed: {exc}")
+        run_migrations()
 
     yield
     logger.info(f"Shutting down {settings.PROJECT_NAME}")
@@ -68,8 +67,8 @@ def create_app() -> FastAPI:
 
     # 4. Root convenience health endpoint (for Docker / K8s probes)
     @app.get("/health", response_model=HealthResponse, tags=["health"])
-    def root_health() -> HealthResponse:
-        return get_health()
+    def root_health(db: Session = Depends(get_db)) -> HealthResponse:
+        return get_health(db)
 
     # 5. Include API routers
     app.include_router(api_router, prefix=settings.API_V1_STR)

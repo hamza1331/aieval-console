@@ -16,6 +16,7 @@ import type {
   FixtureValidateRequest,
   FixtureValidateResponse,
   OverviewResponse,
+  PaginatedResponse,
   ReviewResponse,
   ReviewUpdateRequest,
   RunDetailResponse,
@@ -57,15 +58,17 @@ export const api = {
   // Contracts (FR-01, FR-02, FR-03, Phase 5 Diff)
   listContracts: (params?: {
     status?: string;
-    skip?: number;
+    offset?: number;
     limit?: number;
-  }): Promise<ContractSummaryResponse[]> => {
+  }): Promise<PaginatedResponse<ContractSummaryResponse>> => {
     const query = new URLSearchParams();
     if (params?.status) query.set('status', params.status);
-    if (params?.skip !== undefined) query.set('skip', params.skip.toString());
+    if (params?.offset !== undefined) query.set('offset', params.offset.toString());
     if (params?.limit !== undefined) query.set('limit', params.limit.toString());
     const qStr = query.toString();
-    return request<ContractSummaryResponse[]>(`/contracts${qStr ? `?${qStr}` : ''}`);
+    return request<PaginatedResponse<ContractSummaryResponse>>(
+      `/contracts${qStr ? `?${qStr}` : ''}`
+    );
   },
 
   getContract: (id: string): Promise<ContractDetailResponse> =>
@@ -124,9 +127,9 @@ export const api = {
     min_duration_ms?: number;
     max_duration_ms?: number;
     failure_code?: string;
-    skip?: number;
+    offset?: number;
     limit?: number;
-  }): Promise<RunSummaryResponse[]> => {
+  }): Promise<PaginatedResponse<RunSummaryResponse>> => {
     const query = new URLSearchParams();
     if (params?.status) query.set('status', params.status);
     if (params?.contract_id) query.set('contract_id', params.contract_id);
@@ -138,10 +141,10 @@ export const api = {
     if (params?.max_duration_ms !== undefined)
       query.set('max_duration_ms', params.max_duration_ms.toString());
     if (params?.failure_code) query.set('failure_code', params.failure_code);
-    if (params?.skip !== undefined) query.set('offset', params.skip.toString());
+    if (params?.offset !== undefined) query.set('offset', params.offset.toString());
     if (params?.limit !== undefined) query.set('limit', params.limit.toString());
     const qStr = query.toString();
-    return request<RunSummaryResponse[]>(`/runs${qStr ? `?${qStr}` : ''}`);
+    return request<PaginatedResponse<RunSummaryResponse>>(`/runs${qStr ? `?${qStr}` : ''}`);
   },
 
   getRun: (id: string): Promise<RunDetailResponse> => request<RunDetailResponse>(`/runs/${id}`),
