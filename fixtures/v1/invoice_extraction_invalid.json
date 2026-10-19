@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "name": "invoice_extraction_invalid",
+  "description": "Invalid invoice extraction with invalid pattern, unpermitted currency, and negative amount",
+  "context": {
+    "input": { "ocr_source": "damaged_scan.pdf" },
+    "metadata": { "contract_name": "Invoice data extraction", "domain": "finance" }
+  },
+  "output": {
+    "invoice_number": "BAD-PREFIX-99",
+    "currency": "CAD",
+    "total_amount": -150.0,
+    "invoice_date": "2026-10-14"
+  },
+  "checks": [
+    {
+      "type": "required_fields",
+      "fields": ["invoice_number", "currency", "total_amount", "invoice_date"]
+    },
+    {
+      "type": "regex_match",
+      "field": "invoice_number",
+      "pattern": "^INV-[0-9]{5}$"
+    },
+    {
+      "type": "enum",
+      "field": "currency",
+      "allowed": ["USD", "EUR", "GBP"]
+    },
+    {
+      "type": "numeric_range",
+      "field": "total_amount",
+      "min": 0.01
+    }
+  ],
+  "expected": {
+    "passed": false,
+    "failures": [
+      {
+        "code": "REGEX_MISMATCH",
+        "path": "invoice_number",
+        "severity": "error"
+      },
+      {
+        "code": "ENUM_MISMATCH",
+        "path": "currency",
+        "severity": "error"
+      },
+      {
+        "code": "VALUE_CONSTRAINT_VIOLATION",
+        "path": "total_amount",
+        "severity": "error"
+      }
+    ]
+  }
+}

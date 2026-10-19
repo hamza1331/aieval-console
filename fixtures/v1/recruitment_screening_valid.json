@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "name": "recruitment_screening_valid",
+  "description": "Valid candidate summary evaluation fixture conforming to SRS Sec 3.2",
+  "context": {
+    "input": { "role": "Senior Infrastructure Architect" },
+    "metadata": { "contract_name": "Recruitment candidate screening", "domain": "recruitment" }
+  },
+  "output": {
+    "candidate_name": "Marcus Aurelius",
+    "recommendation": "advance",
+    "score": 96
+  },
+  "checks": [
+    {
+      "type": "required_fields",
+      "fields": ["candidate_name", "recommendation", "score"]
+    },
+    {
+      "type": "enum",
+      "field": "recommendation",
+      "allowed": ["advance", "hold", "reject"]
+    },
+    {
+      "type": "numeric_range",
+      "field": "score",
+      "min": 0,
+      "max": 100
+    }
+  ],
+  "expected": {
+    "passed": true,
+    "failures": []
+  }
+}

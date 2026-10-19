@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "name": "invoice_extraction_valid",
+  "description": "Valid invoice data extraction fixture conforming to SRS Sec 3.2",
+  "context": {
+    "input": { "ocr_source": "scanned_invoice_202610.pdf" },
+    "metadata": { "contract_name": "Invoice data extraction", "domain": "finance" }
+  },
+  "output": {
+    "invoice_number": "INV-78901",
+    "currency": "EUR",
+    "total_amount": 2490.75,
+    "invoice_date": "2026-10-14"
+  },
+  "checks": [
+    {
+      "type": "required_fields",
+      "fields": ["invoice_number", "currency", "total_amount", "invoice_date"]
+    },
+    {
+      "type": "regex_match",
+      "field": "invoice_number",
+      "pattern": "^INV-[0-9]{5}$"
+    },
+    {
+      "type": "enum",
+      "field": "currency",
+      "allowed": ["USD", "EUR", "GBP"]
+    },
+    {
+      "type": "numeric_range",
+      "field": "total_amount",
+      "min": 0.01
+    }
+  ],
+  "expected": {
+    "passed": true,
+    "failures": []
+  }
+}

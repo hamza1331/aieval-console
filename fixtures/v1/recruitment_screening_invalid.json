@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "name": "recruitment_screening_invalid",
+  "description": "Invalid candidate summary with score out of bounds and invalid recommendation enum",
+  "context": {
+    "input": { "role": "Senior Infrastructure Architect" },
+    "metadata": { "contract_name": "Recruitment candidate screening", "domain": "recruitment" }
+  },
+  "output": {
+    "candidate_name": "Titus Pullo",
+    "recommendation": "direct_hire_immediately",
+    "score": 150
+  },
+  "checks": [
+    {
+      "type": "required_fields",
+      "fields": ["candidate_name", "recommendation", "score"]
+    },
+    {
+      "type": "enum",
+      "field": "recommendation",
+      "allowed": ["advance", "hold", "reject"]
+    },
+    {
+      "type": "numeric_range",
+      "field": "score",
+      "min": 0,
+      "max": 100
+    }
+  ],
+  "expected": {
+    "passed": false,
+    "failures": [
+      {
+        "code": "ENUM_MISMATCH",
+        "path": "recommendation",
+        "severity": "error"
+      },
+      {
+        "code": "VALUE_CONSTRAINT_VIOLATION",
+        "path": "score",
+        "severity": "error"
+      }
+    ]
+  }
+}

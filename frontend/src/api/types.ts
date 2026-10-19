@@ -162,3 +162,77 @@ export interface FixtureValidateResponse {
   checks_count: number;
 }
 
+export interface FixtureReplayRequest {
+  fixture: Record<string, unknown>;
+  persist_run?: boolean;
+  contract_id?: string | null;
+}
+
+export interface FixtureReplayResponse {
+  run_id?: string | null;
+  actual_status: 'passed' | 'failed';
+  expected_status: 'passed' | 'failed';
+  parity_status: 'match' | 'regression' | 'divergence';
+  matches_expected: boolean;
+  failures_count: number;
+  duration_ms: number;
+  differences: string[];
+  failures: FailureSchema[];
+}
+
+export interface FixtureImportRequest {
+  fixture: Record<string, unknown>;
+  contract_name?: string | null;
+}
+
+export interface CheckDiffItem {
+  check_type: string;
+  field?: string | null;
+  change_type: 'added' | 'removed' | 'modified' | 'unchanged';
+  old_spec?: Record<string, unknown> | null;
+  new_spec?: Record<string, unknown> | null;
+  details: string[];
+}
+
+export interface ContractDiffResponse {
+  contract_id: string;
+  from_version: number;
+  to_version: number;
+  added_count: number;
+  removed_count: number;
+  modified_count: number;
+  unchanged_count: number;
+  checks: CheckDiffItem[];
+}
+
+export interface BatchEvaluationItem {
+  item_id?: string | null;
+  input?: Record<string, unknown> | null;
+  output: unknown;
+}
+
+export interface BatchEvaluationRequest {
+  contract_version_id?: string | null;
+  contract_id?: string | null;
+  contract?: ContractDefinition | null;
+  items: BatchEvaluationItem[];
+}
+
+export interface BatchItemOutcome {
+  item_id?: string | null;
+  run_id: string;
+  status: 'passed' | 'failed';
+  failures: FailureSchema[];
+  warnings: FailureSchema[];
+  duration_ms: number;
+}
+
+export interface BatchEvaluationResponse {
+  total_items: number;
+  passed_count: number;
+  failed_count: number;
+  pass_rate: number;
+  total_duration_ms: number;
+  results: BatchItemOutcome[];
+}
+

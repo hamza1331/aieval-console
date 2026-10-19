@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "name": "support_ticket_valid",
+  "description": "Valid support ticket classification output conforming to Appendix A",
+  "context": {
+    "input": { "task": "classify_support_ticket" },
+    "metadata": { "contract_name": "Support ticket classification", "domain": "support" }
+  },
+  "output": {
+    "category": "billing",
+    "priority": "urgent",
+    "summary": "Customer billing inquiry regarding duplicate charge on card."
+  },
+  "checks": [
+    {
+      "type": "required_fields",
+      "fields": ["category", "priority", "summary"]
+    },
+    {
+      "type": "enum",
+      "field": "category",
+      "allowed": ["billing", "technical", "account", "other"]
+    },
+    {
+      "type": "enum",
+      "field": "priority",
+      "allowed": ["low", "normal", "high", "urgent"]
+    },
+    {
+      "type": "max_length",
+      "field": "summary",
+      "max": 300
+    }
+  ],
+  "expected": {
+    "passed": true,
+    "failures": []
+  }
+}

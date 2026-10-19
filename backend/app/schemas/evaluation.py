@@ -69,3 +69,50 @@ class EvaluationResponse(BaseModel):
     warnings: list[FailureSchema] = Field(
         default_factory=list, description="List of non-blocking warnings"
     )
+
+
+class BatchEvaluationItem(BaseModel):
+    """Individual item within a batch evaluation request."""
+
+    item_id: str | None = Field(default=None, description="Optional client-defined item identifier")
+    input: dict[str, Any] | None = Field(default=None, description="Optional input/prompt context")
+    output: Any = Field(..., description="AI output data to evaluate")
+
+
+class BatchEvaluationRequest(BaseModel):
+    """Batch submission for evaluating multiple outputs against a contract."""
+
+    contract_version_id: str | None = Field(
+        default=None, description="ID of specific contract version"
+    )
+    contract_id: str | None = Field(
+        default=None, description="ID of contract (uses latest active version)"
+    )
+    contract: ContractDefinitionSchema | None = Field(
+        default=None, description="Optional inline contract definition"
+    )
+    items: list[BatchEvaluationItem] = Field(
+        ..., min_length=1, max_length=50, description="List of items to evaluate (max 50)"
+    )
+
+
+class BatchItemOutcome(BaseModel):
+    """Individual evaluation outcome in a batch."""
+
+    item_id: str | None = None
+    run_id: str
+    status: str
+    failures: list[FailureSchema] = Field(default_factory=list)
+    warnings: list[FailureSchema] = Field(default_factory=list)
+    duration_ms: float
+
+
+class BatchEvaluationResponse(BaseModel):
+    """Aggregate outcome of batch evaluation."""
+
+    total_items: int
+    passed_count: int
+    failed_count: int
+    pass_rate: float
+    total_duration_ms: float
+    results: list[BatchItemOutcome]

@@ -257,9 +257,10 @@ With the core v0.1 workflow fully delivered (Phase 1 library integration, Phase 
 
 ## 5. Acceptance Criteria & Definition of Done for Phase 5
 
-- [ ] A developer can upload or paste an external fixture JSON and receive an instant parity report showing whether model behavior matched expected outcomes or suffered a regression.
-- [ ] Contract version history includes a visual diff showing exactly what checks or rules changed between versions.
-- [ ] Evaluation runs can be filtered by date range and specific failure code taxonomy, and exported as CSV or JSON summaries.
-- [ ] All three official SRS demo domains (Support Tickets, Recruitment Screening, Invoice Extraction) are seeded and testable via one-click presets.
-- [ ] Batch evaluation endpoint processes up to 50 items and returns aggregate statistics.
-- [ ] 100% of tests pass, 0 linting errors, 0 type errors, clean production bundle build.
+- [x] A developer can upload or paste an external fixture JSON and receive an instant parity report showing whether model behavior matched expected outcomes or suffered a regression.
+- [x] Contract version history includes a visual diff showing exactly what checks or rules changed between versions.
+- [x] Evaluation runs can be filtered by date range and specific failure code taxonomy, and exported as CSV or JSON summaries.
+- [x] All three official SRS demo domains (Support Tickets, Recruitment Screening, Invoice Extraction) are seeded and testable via one-click presets.
+- [x] Batch evaluation endpoint processes up to 50 items and returns aggregate statistics.
+- [x] 100% of tests pass, 0 linting errors, 0 type errors, clean production bundle build.
+

@@ -1,4 +1,9 @@
-"""Database demo data seeder (FR-13).
+"""Database demo data seeder (FR-13, Phase 5 Multi-Domain).
+
+Seeds the database with all 3 official SRS demonstration domains:
+1. Support ticket classification (Appendix A)
+2. Recruitment candidate screening (SRS Sec 3.2)
+3. Invoice data extraction (SRS Sec 3.2)
 
 Can be executed as a repeatable CLI command:
     python -m app.db.seed
@@ -12,7 +17,7 @@ from app.services.contract_service import ContractService
 from app.services.evaluation_service import EvaluationService
 from app.services.review_service import ReviewService
 
-APPENDIX_A_CHECKS: list[dict[str, Any]] = [
+SUPPORT_TICKET_CHECKS: list[dict[str, Any]] = [
     {
         "type": "required_fields",
         "fields": ["category", "priority", "summary"],
@@ -34,9 +39,49 @@ APPENDIX_A_CHECKS: list[dict[str, Any]] = [
     },
 ]
 
+RECRUITMENT_CHECKS: list[dict[str, Any]] = [
+    {
+        "type": "required_fields",
+        "fields": ["candidate_name", "recommendation", "score"],
+    },
+    {
+        "type": "enum",
+        "field": "recommendation",
+        "allowed": ["advance", "hold", "reject"],
+    },
+    {
+        "type": "numeric_range",
+        "field": "score",
+        "min": 0,
+        "max": 100,
+    },
+]
+
+INVOICE_CHECKS: list[dict[str, Any]] = [
+    {
+        "type": "required_fields",
+        "fields": ["invoice_number", "currency", "total_amount", "invoice_date"],
+    },
+    {
+        "type": "regex_match",
+        "field": "invoice_number",
+        "pattern": r"^INV-[0-9]{5}$",
+    },
+    {
+        "type": "enum",
+        "field": "currency",
+        "allowed": ["USD", "EUR", "GBP"],
+    },
+    {
+        "type": "numeric_range",
+        "field": "total_amount",
+        "min": 0.01,
+    },
+]
+
 
 def seed_database(force: bool = False) -> bool:
-    """Seeds the database with the Appendix A contract and realistic synthetic runs."""
+    """Seeds the database with contracts and synthetic runs across all 3 domains."""
     db = SessionLocal()
     try:
         contract_service = ContractService(db)
@@ -44,101 +89,103 @@ def seed_database(force: bool = False) -> bool:
         review_service = ReviewService(db)
 
         # Check idempotency
-        contracts, _ = contract_service.list_contracts(limit=10)
-        existing_demo = next(
-            (c for c in contracts if c.name == "Support ticket classification"),
-            None,
-        )
+        contracts, _ = contract_service.list_contracts(limit=20)
+        existing_names = {c.name for c in contracts}
 
-        if existing_demo and not force:
-            print("Demo contract 'Support ticket classification' already exists. Skipping seed.")
-            return False
+        # 1. Seed Support Ticket Classifier
+        if "Support ticket classification" not in existing_names or force:
+            print("Seeding domain 1: 'Support ticket classification'...")
+            c1 = contract_service.create_contract(
+                name="Support ticket classification",
+                description="Validate structured output from a ticket classifier (Appendix A demo)",
+                checks=SUPPORT_TICKET_CHECKS,
+            )
+            v1_id = c1.versions[0].id
 
-        print("Seeding demo contract 'Support ticket classification'...")
-        contract = contract_service.create_contract(
-            name="Support ticket classification",
-            description="Validate structured output from a ticket classifier (Appendix A demo)",
-            checks=APPENDIX_A_CHECKS,
-        )
-        version_id = contract.versions[0].id
-        print(f"Created contract {contract.id} with version {version_id}.")
-
-        # Synthetic runs
-        synthetic_cases: list[dict[str, Any]] = [
-            {
-                "input": {"task": "classify_support_ticket", "ticket_id": "TICK-101"},
-                "output": {
+            # Passing run
+            eval_service.evaluate_and_persist(
+                contract_version_id=v1_id,
+                input_data={"prompt": "Customer unable to pay invoice due to expired credit card."},
+                output={
                     "category": "billing",
                     "priority": "urgent",
-                    "summary": "Payment method expired for annual enterprise subscription renewal.",
+                    "summary": "Customer unable to complete monthly invoice payment with credit card.",
                 },
-                "review": None,
-            },
-            {
-                "input": {"task": "classify_support_ticket", "ticket_id": "TICK-102"},
-                "output": {
-                    "category": "technical",
-                    "priority": "normal",
-                    "summary": "User unable to upload profile avatar PNG in settings.",
-                },
-                "review": None,
-            },
-            {
-                "input": {"task": "classify_support_ticket", "ticket_id": "TICK-103"},
-                "output": {
-                    "category": "technical",
-                    "priority": "super_urgent_now",  # Invalid enum
-                    "summary": "Database connectivity loss in production cluster.",
-                },
-                "review": {
-                    "status": "reviewed",
-                    "note": "Model hallucinated non-standard priority string. Needs prompt constraint adjustment.",
-                },
-            },
-            {
-                "input": {"task": "classify_support_ticket", "ticket_id": "TICK-104"},
-                "output": {
-                    "category": "account",
-                    "priority": "low",
-                    # Missing summary
-                },
-                "review": None,
-            },
-            {
-                "input": {"task": "classify_support_ticket", "ticket_id": "TICK-105"},
-                "output": {
-                    "category": "other",
-                    "priority": "low",
-                    "summary": "Repeated explanation " * 25,  # Exceeds 300 chars
-                },
-                "review": None,
-            },
-        ]
-
-        print("Generating synthetic evaluation runs...")
-        for idx, case in enumerate(synthetic_cases, 1):
-            resp = eval_service.evaluate_and_persist(
-                contract_version_id=version_id,
-                input_data=case["input"],
-                output=case["output"],
             )
-            print(f"  Run {idx}: status={resp.status} (run_id={resp.run_id})")
+            # Failing run with review
+            r_fail = eval_service.evaluate_and_persist(
+                contract_version_id=v1_id,
+                input_data={"prompt": "Urgent assistance required with database connection pool."},
+                output={
+                    "category": "technical",
+                    "priority": "immediate_now",
+                    "summary": "Database connectivity intermittent on primary cluster.",
+                },
+            )
+            review_service.update_review(
+                run_id=r_fail.run_id,
+                status="reviewed",
+                note="Model hallucinated non-standard priority 'immediate_now'. Added fixture to regression suite.",
+            )
 
-            review_info = case.get("review")
-            if review_info:
-                review_service.update_review(
-                    run_id=resp.run_id,
-                    status=review_info["status"],
-                    note=review_info["note"],
-                )
-                print(f"  Annotated Run {idx} with review note.")
+        # 2. Seed Recruitment Candidate Screening
+        if "Recruitment candidate screening" not in existing_names or force:
+            print("Seeding domain 2: 'Recruitment candidate screening'...")
+            c2 = contract_service.create_contract(
+                name="Recruitment candidate screening",
+                description="Validate candidate triage summary, skills array, and evaluation rating (SRS Sec 3.2)",
+                checks=RECRUITMENT_CHECKS,
+            )
+            v2_id = c2.versions[0].id
 
-        print("Demo seeding complete!")
+            eval_service.evaluate_and_persist(
+                contract_version_id=v2_id,
+                input_data={"role": "Senior Backend Engineer", "candidate": "Alice Johnson"},
+                output={
+                    "candidate_name": "Alice Johnson",
+                    "recommendation": "advance",
+                    "score": 94,
+                },
+            )
+            eval_service.evaluate_and_persist(
+                contract_version_id=v2_id,
+                input_data={"role": "Junior Data Analyst", "candidate": "Bob Vance"},
+                output={
+                    "candidate_name": "Bob Vance",
+                    "recommendation": "strong_hire",
+                    "score": 120,
+                },
+            )
+
+        # 3. Seed Invoice Data Extraction
+        if "Invoice data extraction" not in existing_names or force:
+            print("Seeding domain 3: 'Invoice data extraction'...")
+            c3 = contract_service.create_contract(
+                name="Invoice data extraction",
+                description="Validate invoice ID formatting, supported currency, and positive amount (SRS Sec 3.2)",
+                checks=INVOICE_CHECKS,
+            )
+            v3_id = c3.versions[0].id
+
+            eval_service.evaluate_and_persist(
+                contract_version_id=v3_id,
+                input_data={"raw_ocr": "Invoice INV-44912 from ACME Corp. Amount: $1,250.00"},
+                output={
+                    "invoice_number": "INV-44912",
+                    "currency": "USD",
+                    "total_amount": 1250.00,
+                    "invoice_date": "2026-10-12",
+                },
+            )
+
+        db.commit()
+        print("Demo database seeding successfully completed.")
         return True
+
     finally:
         db.close()
 
 
 if __name__ == "__main__":
-    force_flag = "--force" in sys.argv
+    force_flag = "--force" in sys.argv or "-f" in sys.argv
     seed_database(force=force_flag)

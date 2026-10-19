@@ -14,7 +14,9 @@ import {
   Hash,
   FileCode,
   AlertCircle,
+  GitCompare,
 } from 'lucide-react';
+import { ContractDiffViewer } from '../components/ContractDiffViewer';
 
 interface ContractDetailPageProps {
   contractId: string;
@@ -40,6 +42,11 @@ export const ContractDetailPage: React.FC<ContractDetailPageProps> = ({
   // Selected version for inspection
   const [selectedVersion, setSelectedVersion] = useState<ContractVersionResponse | null>(null);
 
+  // Tab & Diff state
+  const [activeTab, setActiveTab] = useState<'inspection' | 'diff'>('inspection');
+  const [diffFromVersion, setDiffFromVersion] = useState<number>(1);
+  const [diffToVersion, setDiffToVersion] = useState<number>(1);
+
   const fetchDetail = async () => {
     try {
       setLoading(true);
@@ -49,6 +56,13 @@ export const ContractDetailPage: React.FC<ContractDetailPageProps> = ({
       if (data.versions.length > 0) {
         // default select latest version (first in sorted list)
         setSelectedVersion(data.versions[0]);
+        if (data.versions.length >= 2) {
+          setDiffToVersion(data.versions[0].version);
+          setDiffFromVersion(data.versions[1].version);
+        } else {
+          setDiffToVersion(data.versions[0].version);
+          setDiffFromVersion(data.versions[0].version);
+        }
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load contract details');
@@ -246,11 +260,46 @@ export const ContractDetailPage: React.FC<ContractDetailPageProps> = ({
           </div>
         </div>
 
-        {/* Selected Version Inspector */}
+        {/* Selected Version Inspector / Diff Panel */}
         <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-sm p-5 space-y-4">
-          {selectedVersion ? (
-            <>
-              <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div className="flex rounded-lg border border-slate-200 p-0.5 bg-slate-50 text-xs">
+              <button
+                onClick={() => setActiveTab('inspection')}
+                className={`px-3 py-1 rounded-md font-medium transition ${
+                  activeTab === 'inspection'
+                    ? 'bg-white text-slate-900 shadow-xs'
+                    : 'text-slate-500 hover:text-slate-900'
+                }`}
+              >
+                Version Definition
+              </button>
+              <button
+                onClick={() => setActiveTab('diff')}
+                className={`px-3 py-1 rounded-md font-medium flex items-center gap-1.5 transition ${
+                  activeTab === 'diff'
+                    ? 'bg-white text-indigo-600 shadow-xs'
+                    : 'text-slate-500 hover:text-slate-900'
+                }`}
+              >
+                <GitCompare className="w-3.5 h-3.5" />
+                Compare Versions
+              </button>
+            </div>
+
+            {activeTab === 'inspection' && selectedVersion && (
+              <button
+                onClick={() => onNavigateToWorkbench(contract.id, selectedVersion.id)}
+                className="px-3 py-1 text-xs font-semibold text-indigo-600 hover:text-indigo-800 bg-indigo-50 border border-indigo-100 rounded-md"
+              >
+                Evaluate against v{selectedVersion.version}
+              </button>
+            )}
+          </div>
+
+          {activeTab === 'inspection' ? (
+            selectedVersion ? (
+              <div className="space-y-4">
                 <div>
                   <h3 className="text-sm font-semibold text-slate-900">
                     Definition for Version {selectedVersion.version}
@@ -259,26 +308,65 @@ export const ContractDetailPage: React.FC<ContractDetailPageProps> = ({
                     SHA-256: {selectedVersion.definition_hash}
                   </p>
                 </div>
-                <button
-                  onClick={() => onNavigateToWorkbench(contract.id, selectedVersion.id)}
-                  className="px-3 py-1 text-xs font-semibold text-indigo-600 hover:text-indigo-800 bg-indigo-50 border border-indigo-100 rounded-md"
-                >
-                  Evaluate against v{selectedVersion.version}
-                </button>
+
+                <div>
+                  <p className="text-xs font-medium text-slate-600 mb-2">Checks Specification:</p>
+                  <JsonViewer
+                    data={selectedVersion.definition_json.checks}
+                    maxHeight="max-h-[420px]"
+                    title={`contract_v${selectedVersion.version}_checks.json`}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-12 text-slate-400 text-sm">
+                Select a version from the history list to inspect its definition.
+              </div>
+            )
+          ) : (
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                <span className="text-xs font-semibold text-slate-700">Select Versions to Compare:</span>
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="text-slate-500">From:</span>
+                  <select
+                    value={diffFromVersion}
+                    onChange={(e) => setDiffFromVersion(Number(e.target.value))}
+                    className="p-1.5 text-xs bg-white border border-slate-300 rounded-md font-mono"
+                  >
+                    {contract.versions.map((v) => (
+                      <option key={`from-${v.id}`} value={v.version}>
+                        v{v.version}
+                      </option>
+                    ))}
+                  </select>
+
+                  <span className="text-slate-500">To:</span>
+                  <select
+                    value={diffToVersion}
+                    onChange={(e) => setDiffToVersion(Number(e.target.value))}
+                    className="p-1.5 text-xs bg-white border border-slate-300 rounded-md font-mono"
+                  >
+                    {contract.versions.map((v) => (
+                      <option key={`to-${v.id}`} value={v.version}>
+                        v{v.version}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
-              <div>
-                <p className="text-xs font-medium text-slate-600 mb-2">Checks Specification:</p>
-                <JsonViewer
-                  data={selectedVersion.definition_json.checks}
-                  maxHeight="max-h-[420px]"
-                  title={`contract_v${selectedVersion.version}_checks.json`}
+              {contract.versions.length < 2 ? (
+                <div className="p-6 text-center text-xs text-slate-500 bg-slate-50 rounded-lg border border-dashed border-slate-200">
+                  This contract currently has only 1 version. Add a new version using the button on the left to compute and visualize declarative diffs.
+                </div>
+              ) : (
+                <ContractDiffViewer
+                  contractId={contract.id}
+                  fromVersion={diffFromVersion}
+                  toVersion={diffToVersion}
                 />
-              </div>
-            </>
-          ) : (
-            <div className="text-center py-12 text-slate-400 text-sm">
-              Select a version from the history list to inspect its definition.
+              )}
             </div>
           )}
         </div>

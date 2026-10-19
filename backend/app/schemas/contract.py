@@ -101,3 +101,27 @@ class ContractDetailResponse(BaseModel):
     versions: list[ContractVersionResponse] = Field(default_factory=list)
 
     model_config = {"from_attributes": True}
+
+
+class CheckDiffItem(BaseModel):
+    """Difference comparison item for an individual check."""
+
+    check_type: str
+    field: str | None = None
+    change_type: str = Field(..., description="'added' | 'removed' | 'modified' | 'unchanged'")
+    old_spec: dict[str, Any] | None = None
+    new_spec: dict[str, Any] | None = None
+    details: list[str] = Field(default_factory=list)
+
+
+class ContractDiffResponse(BaseModel):
+    """Structured comparison between two contract versions."""
+
+    contract_id: str
+    from_version: int
+    to_version: int
+    added_count: int
+    removed_count: int
+    modified_count: int
+    unchanged_count: int
+    checks: list[CheckDiffItem]

@@ -10,7 +10,9 @@ from sqlalchemy.orm import Session
 from app.models.contract import Contract
 from app.repositories.contract_repo import ContractRepository
 from app.schemas.contract import (
+    CheckDiffItem,
     ContractDetailResponse,
+    ContractDiffResponse,
     ContractSummaryResponse,
     ContractVersionResponse,
 )
@@ -178,3 +180,127 @@ class ContractService:
         if not version:
             return None
         return ContractVersionResponse.model_validate(version)
+
+    def diff_versions(
+        self,
+        contract_id: str,
+        from_version: int,
+        to_version: int,
+    ) -> ContractDiffResponse:
+        v1 = self.repo.get_version_by_number(contract_id, from_version)
+        if not v1:
+            raise ValueError(f"Contract version {from_version} not found.")
+
+        v2 = self.repo.get_version_by_number(contract_id, to_version)
+        if not v2:
+            raise ValueError(f"Contract version {to_version} not found.")
+
+        checks_v1: list[dict[str, Any]] = v1.definition_json.get("checks", [])
+        checks_v2: list[dict[str, Any]] = v2.definition_json.get("checks", [])
+
+        # Match checks by (type, field) signature or index
+        def check_key(c: dict[str, Any], idx: int) -> tuple[str, str | None, int]:
+            return (c.get("type", ""), c.get("field"), idx)
+
+        # Build diff items
+        diff_items: list[CheckDiffItem] = []
+        added_count = 0
+        removed_count = 0
+        modified_count = 0
+        unchanged_count = 0
+
+        # Create lookup by (type, field) for matching
+        v1_matched = set()
+        v2_matched = set()
+
+        for i, c1 in enumerate(checks_v1):
+            c1_type = c1.get("type", "")
+            c1_field = c1.get("field")
+
+            # Try to find corresponding check in v2
+            match_idx = None
+            for j, c2 in enumerate(checks_v2):
+                if j in v2_matched:
+                    continue
+                if c2.get("type") == c1_type and c2.get("field") == c1_field:
+                    match_idx = j
+                    break
+
+            if match_idx is not None:
+                v1_matched.add(i)
+                v2_matched.add(match_idx)
+                c2 = checks_v2[match_idx]
+
+                if c1 == c2:
+                    unchanged_count += 1
+                    diff_items.append(
+                        CheckDiffItem(
+                            check_type=c1_type,
+                            field=c1_field,
+                            change_type="unchanged",
+                            old_spec=c1,
+                            new_spec=c2,
+                        )
+                    )
+                else:
+                    modified_count += 1
+                    details: list[str] = []
+                    all_keys = set(c1.keys()).union(set(c2.keys()))
+                    for k in sorted(all_keys):
+                        if k not in c1:
+                            details.append(f"Added attribute '{k}': {c2[k]}")
+                        elif k not in c2:
+                            details.append(f"Removed attribute '{k}': {c1[k]}")
+                        elif c1[k] != c2[k]:
+                            details.append(f"Changed '{k}' from {c1[k]} to {c2[k]}")
+
+                    diff_items.append(
+                        CheckDiffItem(
+                            check_type=c1_type,
+                            field=c1_field,
+                            change_type="modified",
+                            old_spec=c1,
+                            new_spec=c2,
+                            details=details,
+                        )
+                    )
+            else:
+                removed_count += 1
+                diff_items.append(
+                    CheckDiffItem(
+                        check_type=c1_type,
+                        field=c1_field,
+                        change_type="removed",
+                        old_spec=c1,
+                        new_spec=None,
+                        details=[f"Removed check: {c1_type} on field '{c1_field}'"],
+                    )
+                )
+
+        # Any unmatched checks in v2 are added
+        for j, c2 in enumerate(checks_v2):
+            if j not in v2_matched:
+                added_count += 1
+                c2_type = c2.get("type", "")
+                c2_field = c2.get("field")
+                diff_items.append(
+                    CheckDiffItem(
+                        check_type=c2_type,
+                        field=c2_field,
+                        change_type="added",
+                        old_spec=None,
+                        new_spec=c2,
+                        details=[f"Added check: {c2_type} on field '{c2_field}'"],
+                    )
+                )
+
+        return ContractDiffResponse(
+            contract_id=contract_id,
+            from_version=from_version,
+            to_version=to_version,
+            added_count=added_count,
+            removed_count=removed_count,
+            modified_count=modified_count,
+            unchanged_count=unchanged_count,
+            checks=diff_items,
+        )

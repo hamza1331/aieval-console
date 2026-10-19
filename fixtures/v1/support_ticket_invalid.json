@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "name": "support_ticket_invalid",
+  "description": "Invalid support ticket classification output with enum and required field failures",
+  "context": {
+    "input": { "task": "classify_support_ticket" },
+    "metadata": { "contract_name": "Support ticket classification", "domain": "support" }
+  },
+  "output": {
+    "category": "unknown_department",
+    "priority": "immediate_now"
+  },
+  "checks": [
+    {
+      "type": "required_fields",
+      "fields": ["category", "priority", "summary"]
+    },
+    {
+      "type": "enum",
+      "field": "category",
+      "allowed": ["billing", "technical", "account", "other"]
+    },
+    {
+      "type": "enum",
+      "field": "priority",
+      "allowed": ["low", "normal", "high", "urgent"]
+    },
+    {
+      "type": "max_length",
+      "field": "summary",
+      "max": 300
+    }
+  ],
+  "expected": {
+    "passed": false,
+    "failures": [
+      {
+        "code": "MISSING_REQUIRED_FIELD",
+        "path": "summary",
+        "severity": "error"
+      },
+      {
+        "code": "ENUM_MISMATCH",
+        "path": "category",
+        "severity": "error"
+      },
+      {
+        "code": "ENUM_MISMATCH",
+        "path": "priority",
+        "severity": "error"
+      }
+    ]
+  }
+}

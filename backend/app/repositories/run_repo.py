@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.models.contract_version import ContractVersion
 from app.models.evaluation_run import EvaluationRun
+from app.models.review import Review
 
 
 class RunRepository:
@@ -52,8 +53,11 @@ class RunRepository:
         self,
         contract_id: str | None = None,
         status: str | None = None,
+        review_status: str | None = None,
         from_date: datetime | None = None,
         to_date: datetime | None = None,
+        min_duration_ms: float | None = None,
+        max_duration_ms: float | None = None,
         limit: int = 50,
         offset: int = 0,
     ) -> list[EvaluationRun]:
@@ -64,12 +68,20 @@ class RunRepository:
 
         if contract_id:
             stmt = stmt.join(ContractVersion).where(ContractVersion.contract_id == contract_id)
+        if review_status:
+            stmt = stmt.join(Review, EvaluationRun.id == Review.run_id).where(
+                Review.status == review_status
+            )
         if status:
             stmt = stmt.where(EvaluationRun.status == status)
         if from_date:
             stmt = stmt.where(EvaluationRun.created_at >= from_date)
         if to_date:
             stmt = stmt.where(EvaluationRun.created_at <= to_date)
+        if min_duration_ms is not None:
+            stmt = stmt.where(EvaluationRun.duration_ms >= min_duration_ms)
+        if max_duration_ms is not None:
+            stmt = stmt.where(EvaluationRun.duration_ms <= max_duration_ms)
 
         stmt = stmt.order_by(desc(EvaluationRun.created_at)).limit(limit).offset(offset)
         return list(self.db.execute(stmt).scalars().all())
@@ -78,17 +90,27 @@ class RunRepository:
         self,
         contract_id: str | None = None,
         status: str | None = None,
+        review_status: str | None = None,
         from_date: datetime | None = None,
         to_date: datetime | None = None,
+        min_duration_ms: float | None = None,
+        max_duration_ms: float | None = None,
     ) -> int:
         stmt = select(func.count(EvaluationRun.id))
         if contract_id:
             stmt = stmt.join(ContractVersion).where(ContractVersion.contract_id == contract_id)
+        if review_status:
+            stmt = stmt.join(Review, EvaluationRun.id == Review.run_id).where(
+                Review.status == review_status
+            )
         if status:
             stmt = stmt.where(EvaluationRun.status == status)
         if from_date:
             stmt = stmt.where(EvaluationRun.created_at >= from_date)
         if to_date:
             stmt = stmt.where(EvaluationRun.created_at <= to_date)
+        if min_duration_ms is not None:
+            stmt = stmt.where(EvaluationRun.duration_ms >= min_duration_ms)
+        if max_duration_ms is not None:
+            stmt = stmt.where(EvaluationRun.duration_ms <= max_duration_ms)
         return self.db.execute(stmt).scalar() or 0
-

@@ -18,7 +18,9 @@ import {
   ExternalLink,
   Code2,
   FileCheck,
+  Upload,
 } from 'lucide-react';
+import { FixtureImportModal } from '../components/FixtureImportModal';
 
 interface WorkbenchPageProps {
   initialContractId?: string | null;
@@ -77,17 +79,26 @@ export const WorkbenchPage: React.FC<WorkbenchPageProps> = ({
   const [evaluating, setEvaluating] = useState<boolean>(false);
   const [evaluationResult, setEvaluationResult] = useState<EvaluationResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showFixtureModal, setShowFixtureModal] = useState<boolean>(false);
+
+  const refreshContracts = async (selectId?: string) => {
+    try {
+      const list = await api.listContracts({ status: 'active' });
+      setContracts(list);
+      if (selectId) {
+        setSelectedContractId(selectId);
+        setMode('stored');
+      } else if (!selectedContractId && list.length > 0) {
+        setSelectedContractId(list[0].id);
+      }
+    } catch {
+      // Ignore background fetch error
+    }
+  };
 
   // Load contracts list
   useEffect(() => {
-    api.listContracts({ status: 'active' }).then((list) => {
-      setContracts(list);
-      if (!selectedContractId && list.length > 0) {
-        setSelectedContractId(list[0].id);
-      }
-    }).catch(() => {
-      // Ignore background fetch error
-    });
+    refreshContracts();
   }, []);
 
   // When selectedContractId changes, fetch full contract versions
@@ -108,32 +119,99 @@ export const WorkbenchPage: React.FC<WorkbenchPageProps> = ({
     }
   }, [selectedContractId]);
 
-  // Sample presets for quick testing
-  const loadPreset = (presetType: 'valid' | 'missing_field' | 'range_error') => {
-    if (presetType === 'valid') {
-      setOutputJson(`{
-  "ticket_id": "TCK-1029",
-  "status": "open",
-  "priority": "urgent",
-  "urgency_score": 8,
-  "summary": "Production API response times degraded above 2500ms threshold.",
-  "assigned_team": "backend"
-}`);
-    } else if (presetType === 'missing_field') {
-      setOutputJson(`{
-  "status": "open",
-  "priority": "medium",
-  "urgency_score": 5
-  /* Missing required ticket_id and summary */
-}`);
-    } else if (presetType === 'range_error') {
-      setOutputJson(`{
-  "ticket_id": "TCK-8821",
-  "status": "open",
-  "priority": "invalid_priority_tier",
-  "urgency_score": 45,
-  "summary": "Too short"
-}`);
+  // Multi-domain presets (Support Tickets, Recruitment Screening, Invoice Extraction)
+  const loadDomainPreset = (domain: 'support' | 'recruitment' | 'invoice', valid: boolean) => {
+    if (domain === 'support') {
+      setInputJson(JSON.stringify({ query: 'Customer requesting urgent server reboot' }, null, 2));
+      setInlineContractJson(JSON.stringify({
+        name: 'Support Ticket Triage Contract',
+        description: 'Validation for customer support ticket generation',
+        checks: [
+          { type: 'required_fields', fields: ['ticket_id', 'status', 'priority', 'summary'] },
+          { type: 'enum', field: 'status', allowed: ['open', 'pending', 'resolved', 'closed'] },
+          { type: 'enum', field: 'priority', allowed: ['low', 'medium', 'high', 'urgent'] },
+          { type: 'numeric_range', field: 'urgency_score', min: 1, max: 10 },
+          { type: 'regex', field: 'ticket_id', pattern: '^TCK-[0-9]{4,6}$' },
+        ],
+      }, null, 2));
+      if (valid) {
+        setOutputJson(JSON.stringify({
+          ticket_id: 'TCK-9901',
+          status: 'open',
+          priority: 'urgent',
+          urgency_score: 9,
+          summary: 'Immediate assistance required for primary production database server unresponsive state.',
+          assigned_team: 'infrastructure',
+        }, null, 2));
+      } else {
+        setOutputJson(JSON.stringify({
+          ticket_id: 'INVALID-ID',
+          status: 'waiting',
+          priority: 'extreme',
+          urgency_score: 99,
+        }, null, 2));
+      }
+      const match = contracts.find((c) => c.name.toLowerCase().includes('support'));
+      if (match && mode === 'stored') setSelectedContractId(match.id);
+    } else if (domain === 'recruitment') {
+      setInputJson(JSON.stringify({ candidate_name: 'Jane Doe', years_experience: 6, role: 'Senior Python Developer' }, null, 2));
+      setInlineContractJson(JSON.stringify({
+        name: 'Recruitment Screening Decision Contract',
+        description: 'Validation for candidate screening assessment output',
+        checks: [
+          { type: 'required_fields', fields: ['candidate_id', 'recommendation', 'match_score', 'summary'] },
+          { type: 'enum', field: 'recommendation', allowed: ['progress_to_interview', 'hold_for_future', 'reject'] },
+          { type: 'numeric_range', field: 'match_score', min: 0, max: 100 },
+          { type: 'regex', field: 'candidate_id', pattern: '^CAN-[0-9]{4,6}$' },
+        ],
+      }, null, 2));
+      if (valid) {
+        setOutputJson(JSON.stringify({
+          candidate_id: 'CAN-8041',
+          recommendation: 'progress_to_interview',
+          match_score: 88.5,
+          summary: 'Strong core Python proficiency with distributed systems and async background.',
+          verified_skills: ['Python', 'Docker', 'PostgreSQL', 'FastAPI'],
+        }, null, 2));
+      } else {
+        setOutputJson(JSON.stringify({
+          candidate_id: 'CANDIDATE_NO_PREFIX',
+          recommendation: 'hire_immediately',
+          match_score: 150,
+        }, null, 2));
+      }
+      const match = contracts.find((c) => c.name.toLowerCase().includes('recruitment'));
+      if (match && mode === 'stored') setSelectedContractId(match.id);
+    } else if (domain === 'invoice') {
+      setInputJson(JSON.stringify({ invoice_raw_text: 'Invoice #INV-2026-0042 dated 2026-03-31 for Acme Corp. Total: $1375.00, Tax: $125.00' }, null, 2));
+      setInlineContractJson(JSON.stringify({
+        name: 'Invoice Field Extraction Contract',
+        description: 'Validation for automated invoice accounting extraction',
+        checks: [
+          { type: 'required_fields', fields: ['invoice_number', 'vendor_name', 'currency', 'total_amount'] },
+          { type: 'enum', field: 'currency', allowed: ['USD', 'EUR', 'GBP', 'CAD'] },
+          { type: 'numeric_range', field: 'total_amount', min: 0.01, max: 1000000.0 },
+          { type: 'regex', field: 'invoice_number', pattern: '^INV-[0-9]{4}-[0-9]{4}$' },
+        ],
+      }, null, 2));
+      if (valid) {
+        setOutputJson(JSON.stringify({
+          invoice_number: 'INV-2026-0042',
+          vendor_name: 'Acme Corp',
+          currency: 'USD',
+          total_amount: 1375.0,
+          tax_amount: 125.0,
+          line_items_count: 3,
+        }, null, 2));
+      } else {
+        setOutputJson(JSON.stringify({
+          invoice_number: 'INV123',
+          currency: 'BITCOIN',
+          total_amount: -50.0,
+        }, null, 2));
+      }
+      const match = contracts.find((c) => c.name.toLowerCase().includes('invoice'));
+      if (match && mode === 'stored') setSelectedContractId(match.id);
     }
   };
 
@@ -205,28 +283,65 @@ export const WorkbenchPage: React.FC<WorkbenchPageProps> = ({
           </p>
         </div>
 
-        {/* Preset quick buttons */}
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-slate-500 flex items-center gap-1">
-            <Sparkles className="w-3.5 h-3.5 text-indigo-500" /> Presets:
-          </span>
+        {/* Actions & Presets */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-lg p-1 text-xs">
+            <span className="font-semibold text-slate-500 flex items-center gap-1 px-1">
+              <Sparkles className="w-3.5 h-3.5 text-indigo-500" /> Presets:
+            </span>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => loadDomainPreset('support', true)}
+                className="px-2 py-0.5 text-xs font-medium bg-white hover:bg-slate-100 rounded border border-slate-200 text-slate-700 transition"
+                title="Support Ticket (Valid output)"
+              >
+                Ticket &check;
+              </button>
+              <button
+                onClick={() => loadDomainPreset('support', false)}
+                className="px-2 py-0.5 text-xs font-medium bg-white hover:bg-rose-50 rounded border border-slate-200 text-rose-600 transition"
+                title="Support Ticket (Invalid output)"
+              >
+                Ticket &cross;
+              </button>
+              <span className="text-slate-300">|</span>
+              <button
+                onClick={() => loadDomainPreset('recruitment', true)}
+                className="px-2 py-0.5 text-xs font-medium bg-white hover:bg-slate-100 rounded border border-slate-200 text-slate-700 transition"
+                title="Recruitment Screening (Valid output)"
+              >
+                Hiring &check;
+              </button>
+              <button
+                onClick={() => loadDomainPreset('recruitment', false)}
+                className="px-2 py-0.5 text-xs font-medium bg-white hover:bg-rose-50 rounded border border-slate-200 text-rose-600 transition"
+                title="Recruitment Screening (Invalid output)"
+              >
+                Hiring &cross;
+              </button>
+              <span className="text-slate-300">|</span>
+              <button
+                onClick={() => loadDomainPreset('invoice', true)}
+                className="px-2 py-0.5 text-xs font-medium bg-white hover:bg-slate-100 rounded border border-slate-200 text-slate-700 transition"
+                title="Invoice Extraction (Valid output)"
+              >
+                Invoice &check;
+              </button>
+              <button
+                onClick={() => loadDomainPreset('invoice', false)}
+                className="px-2 py-0.5 text-xs font-medium bg-white hover:bg-rose-50 rounded border border-slate-200 text-rose-600 transition"
+                title="Invoice Extraction (Invalid output)"
+              >
+                Invoice &cross;
+              </button>
+            </div>
+          </div>
+
           <button
-            onClick={() => loadPreset('valid')}
-            className="px-2.5 py-1 text-xs font-medium bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded border border-emerald-200 transition"
+            onClick={() => setShowFixtureModal(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100 transition shadow-2xs"
           >
-            Passing
-          </button>
-          <button
-            onClick={() => loadPreset('missing_field')}
-            className="px-2.5 py-1 text-xs font-medium bg-rose-50 text-rose-700 hover:bg-rose-100 rounded border border-rose-200 transition"
-          >
-            Missing Field
-          </button>
-          <button
-            onClick={() => loadPreset('range_error')}
-            className="px-2.5 py-1 text-xs font-medium bg-amber-50 text-amber-700 hover:bg-amber-100 rounded border border-amber-200 transition"
-          >
-            Multi-Failure
+            <Upload className="w-3.5 h-3.5" /> Import & Replay (FR-16)
           </button>
         </div>
       </div>
@@ -462,6 +577,15 @@ export const WorkbenchPage: React.FC<WorkbenchPageProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Golden Fixture Import & Replay Modal (FR-16) */}
+      <FixtureImportModal
+        isOpen={showFixtureModal}
+        onClose={() => setShowFixtureModal(false)}
+        onImportSuccess={(newContractId) => {
+          refreshContracts(newContractId);
+        }}
+      />
     </div>
   );
 };

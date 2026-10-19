@@ -13,7 +13,11 @@ from app.repositories.contract_repo import ContractRepository
 from app.repositories.review_repo import ReviewRepository
 from app.repositories.run_repo import RunRepository
 from app.schemas.contract import ContractDefinitionSchema
-from app.schemas.evaluation import EvaluationResponse
+from app.schemas.evaluation import (
+    BatchEvaluationResponse,
+    BatchItemOutcome,
+    EvaluationResponse,
+)
 from app.schemas.review import ReviewResponse
 from app.schemas.run import RunDetailResponse, RunSummaryResponse
 
@@ -99,6 +103,60 @@ class EvaluationService:
 
         return response
 
+    def evaluate_batch(
+        self,
+        items: list[Any],
+        contract_version_id: str | None = None,
+        contract_id: str | None = None,
+        inline_contract: ContractDefinitionSchema | None = None,
+    ) -> BatchEvaluationResponse:
+        results: list[BatchItemOutcome] = []
+        total_duration = 0.0
+        passed_count = 0
+        failed_count = 0
+
+        for item in items:
+            input_val = getattr(item, "input", None)
+            output_val = getattr(item, "output", None)
+            item_id = getattr(item, "item_id", None)
+
+            res = self.evaluate_and_persist(
+                output=output_val,
+                contract_version_id=contract_version_id,
+                contract_id=contract_id,
+                inline_contract=inline_contract,
+                input_data=input_val,
+            )
+
+            total_duration += res.duration_ms
+            if res.status == "passed":
+                passed_count += 1
+            else:
+                failed_count += 1
+
+            results.append(
+                BatchItemOutcome(
+                    item_id=item_id,
+                    run_id=res.run_id,
+                    status=res.status,
+                    failures=res.failures,
+                    warnings=res.warnings,
+                    duration_ms=res.duration_ms,
+                )
+            )
+
+        total_items = len(results)
+        pass_rate = round((passed_count / total_items * 100.0), 2) if total_items > 0 else 0.0
+
+        return BatchEvaluationResponse(
+            total_items=total_items,
+            passed_count=passed_count,
+            failed_count=failed_count,
+            pass_rate=pass_rate,
+            total_duration_ms=round(total_duration, 2),
+            results=results,
+        )
+
     def get_run(self, run_id: str) -> RunDetailResponse | None:
         run = self.run_repo.get_by_id(run_id)
         if not run:
@@ -138,24 +196,34 @@ class EvaluationService:
         self,
         contract_id: str | None = None,
         status: str | None = None,
+        review_status: str | None = None,
         from_date: datetime | None = None,
         to_date: datetime | None = None,
+        min_duration_ms: float | None = None,
+        max_duration_ms: float | None = None,
+        failure_code: str | None = None,
         limit: int = 50,
         offset: int = 0,
     ) -> tuple[list[RunSummaryResponse], int]:
         runs: list[EvaluationRun] = self.run_repo.list_runs(
             contract_id=contract_id,
             status=status,
+            review_status=review_status,
             from_date=from_date,
             to_date=to_date,
+            min_duration_ms=min_duration_ms,
+            max_duration_ms=max_duration_ms,
             limit=limit,
             offset=offset,
         )
         total = self.run_repo.count_runs(
             contract_id=contract_id,
             status=status,
+            review_status=review_status,
             from_date=from_date,
             to_date=to_date,
+            min_duration_ms=min_duration_ms,
+            max_duration_ms=max_duration_ms,
         )
 
         items: list[RunSummaryResponse] = []
@@ -163,6 +231,17 @@ class EvaluationService:
             version_obj = r.contract_version
             contract_obj = version_obj.contract if version_obj else None
             summary_dict = r.result_json.get("summary", {})
+            failures_list = r.result_json.get("failures", [])
+
+            # Apply failure_code filter if specified
+            if failure_code:
+                fc_upper = failure_code.upper()
+                has_code = any(
+                    isinstance(f, dict) and f.get("code", "").upper() == fc_upper
+                    for f in failures_list
+                )
+                if not has_code:
+                    continue
 
             items.append(
                 RunSummaryResponse(

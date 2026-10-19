@@ -1,4 +1,4 @@
-"""Golden fixture export and validation routes (FR-10, FR-16)."""
+"""Golden fixture export, validation, import, and replay routes (FR-10, FR-16)."""
 
 from typing import Any
 
@@ -6,7 +6,14 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.schemas.fixture import FixtureValidateRequest, FixtureValidateResponse
+from app.schemas.contract import ContractSummaryResponse
+from app.schemas.fixture import (
+    FixtureImportRequest,
+    FixtureReplayRequest,
+    FixtureReplayResponse,
+    FixtureValidateRequest,
+    FixtureValidateResponse,
+)
 from app.services.fixture_service import FixtureService
 
 router = APIRouter(tags=["fixtures"])
@@ -58,3 +65,47 @@ def validate_fixture(
         checks_count=checks_count,
     )
 
+
+@router.post(
+    "/fixtures/replay",
+    response_model=FixtureReplayResponse,
+    summary="Replay a golden fixture against the engine and compute parity (FR-16)",
+)
+def replay_fixture(
+    payload: FixtureReplayRequest,
+    db: Session = Depends(get_db),
+) -> FixtureReplayResponse:
+    service = FixtureService(db)
+    try:
+        return service.replay_fixture(
+            fixture=payload.fixture,
+            persist_run=payload.persist_run,
+            contract_id=payload.contract_id,
+        )
+    except ValueError as err:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(err),
+        ) from err
+
+
+@router.post(
+    "/fixtures/import",
+    response_model=ContractSummaryResponse,
+    summary="Import a golden fixture as a new declarative validation contract (FR-16)",
+)
+def import_fixture(
+    payload: FixtureImportRequest,
+    db: Session = Depends(get_db),
+) -> ContractSummaryResponse:
+    service = FixtureService(db)
+    try:
+        return service.import_fixture_as_contract(
+            fixture=payload.fixture,
+            contract_name=payload.contract_name,
+        )
+    except ValueError as err:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(err),
+        ) from err

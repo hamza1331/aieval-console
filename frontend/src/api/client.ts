@@ -1,12 +1,18 @@
 import type {
+  BatchEvaluationRequest,
+  BatchEvaluationResponse,
   ContractCreateRequest,
   ContractDetailResponse,
+  ContractDiffResponse,
   ContractSummaryResponse,
   ContractUpdateRequest,
   ContractVersionCreateRequest,
   ContractVersionResponse,
   EvaluationRequest,
   EvaluationResponse,
+  FixtureImportRequest,
+  FixtureReplayRequest,
+  FixtureReplayResponse,
   FixtureValidateRequest,
   FixtureValidateResponse,
   OverviewResponse,
@@ -48,8 +54,12 @@ export const api = {
   // Overview (FR-11)
   getOverview: (): Promise<OverviewResponse> => request<OverviewResponse>('/overview'),
 
-  // Contracts (FR-01, FR-02, FR-03)
-  listContracts: (params?: { status?: string; skip?: number; limit?: number }): Promise<ContractSummaryResponse[]> => {
+  // Contracts (FR-01, FR-02, FR-03, Phase 5 Diff)
+  listContracts: (params?: {
+    status?: string;
+    skip?: number;
+    limit?: number;
+  }): Promise<ContractSummaryResponse[]> => {
     const query = new URLSearchParams();
     if (params?.status) query.set('status', params.status);
     if (params?.skip !== undefined) query.set('skip', params.skip.toString());
@@ -82,18 +92,38 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
-  // Evaluations / Workbench (FR-04)
+  diffContractVersions: (
+    id: string,
+    fromVersion: number,
+    toVersion: number
+  ): Promise<ContractDiffResponse> =>
+    request<ContractDiffResponse>(
+      `/contracts/${id}/diff?from_version=${fromVersion}&to_version=${toVersion}`
+    ),
+
+  // Evaluations / Workbench (FR-04, Phase 5 Batch)
   evaluate: (data: EvaluationRequest): Promise<EvaluationResponse> =>
     request<EvaluationResponse>('/evaluations', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
 
-  // Runs & Inspection (FR-08, FR-09)
+  evaluateBatch: (data: BatchEvaluationRequest): Promise<BatchEvaluationResponse> =>
+    request<BatchEvaluationResponse>('/evaluations/batch', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  // Runs & Inspection (FR-08, FR-09, Phase 5 Filters & Export)
   listRuns: (params?: {
     status?: string;
     contract_id?: string;
     review_status?: string;
+    from_date?: string;
+    to_date?: string;
+    min_duration_ms?: number;
+    max_duration_ms?: number;
+    failure_code?: string;
     skip?: number;
     limit?: number;
   }): Promise<RunSummaryResponse[]> => {
@@ -101,13 +131,30 @@ export const api = {
     if (params?.status) query.set('status', params.status);
     if (params?.contract_id) query.set('contract_id', params.contract_id);
     if (params?.review_status) query.set('review_status', params.review_status);
-    if (params?.skip !== undefined) query.set('skip', params.skip.toString());
+    if (params?.from_date) query.set('from_date', params.from_date);
+    if (params?.to_date) query.set('to_date', params.to_date);
+    if (params?.min_duration_ms !== undefined)
+      query.set('min_duration_ms', params.min_duration_ms.toString());
+    if (params?.max_duration_ms !== undefined)
+      query.set('max_duration_ms', params.max_duration_ms.toString());
+    if (params?.failure_code) query.set('failure_code', params.failure_code);
+    if (params?.skip !== undefined) query.set('offset', params.skip.toString());
     if (params?.limit !== undefined) query.set('limit', params.limit.toString());
     const qStr = query.toString();
     return request<RunSummaryResponse[]>(`/runs${qStr ? `?${qStr}` : ''}`);
   },
 
   getRun: (id: string): Promise<RunDetailResponse> => request<RunDetailResponse>(`/runs/${id}`),
+
+  getExportRunsUrl: (params: Record<string, string | number | undefined>): string => {
+    const query = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== '') {
+        query.set(k, String(v));
+      }
+    });
+    return `${BASE_URL}/runs/export?${query.toString()}`;
+  },
 
   // Human Review (FR-15)
   updateReview: (runId: string, data: ReviewUpdateRequest): Promise<ReviewResponse> =>
@@ -116,7 +163,7 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
-  // Fixtures (FR-10, FR-16)
+  // Fixtures (FR-10, FR-16, Phase 5 Replay & Import)
   getRunFixture: (runId: string): Promise<Record<string, unknown>> =>
     request<Record<string, unknown>>(`/runs/${runId}/fixture`),
 
@@ -125,5 +172,16 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-};
 
+  replayFixture: (data: FixtureReplayRequest): Promise<FixtureReplayResponse> =>
+    request<FixtureReplayResponse>('/fixtures/replay', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  importFixture: (data: FixtureImportRequest): Promise<ContractSummaryResponse> =>
+    request<ContractSummaryResponse>('/fixtures/import', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+};

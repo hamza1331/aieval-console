@@ -8,6 +8,7 @@ from app.schemas.common import PaginatedResponse
 from app.schemas.contract import (
     ContractCreateRequest,
     ContractDetailResponse,
+    ContractDiffResponse,
     ContractSummaryResponse,
     ContractUpdateRequest,
     ContractVersionCreateRequest,
@@ -161,4 +162,29 @@ def get_contract_version(
             detail=f"Version {version} for contract '{id}' not found.",
         )
     return version_obj
+
+
+@router.get(
+    "/{id}/diff",
+    response_model=ContractDiffResponse,
+    summary="Compute visual and structural diff between two contract versions",
+)
+def diff_contract_versions(
+    id: str,
+    from_version: int = Query(..., ge=1, description="Source base version"),
+    to_version: int = Query(..., ge=1, description="Target version to compare against"),
+    db: Session = Depends(get_db),
+) -> ContractDiffResponse:
+    service = ContractService(db)
+    try:
+        return service.diff_versions(
+            contract_id=id,
+            from_version=from_version,
+            to_version=to_version,
+        )
+    except ValueError as err:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(err),
+        ) from err
 
